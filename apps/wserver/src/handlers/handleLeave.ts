@@ -1,24 +1,34 @@
-import { Context } from "../types/Context";
-import { ParsedData } from "../types/ParsedData";
-export function handleLeave(context:Context, parsedData: Extract<ParsedData,{event:"join"|"leave"}>) {
-    const { id, ws } = context;
-    const room = context.getRoomOrError(parsedData.spaceId);
-    if (!room) return;
+import { Server, Socket } from "socket.io";
+import { RoomManager } from "../RoomManager";
+import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "../types/events";
+
+type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+
+export function handleLeave(
+  io: IoServer,
+  socket: IoSocket,
+  data: Extract<ClientToServerEvents["room:leave"], Function> extends (data: infer T, ...args: any[]) => any ? T : never
+) {
   
-    const status = room.removeUser(id);
-  
-    if (status) {
-      room.broadcastMessage(JSON.stringify({
-        event:"leave",
-        status: "success",
-        playerId: id
-      }));
-    } else {
-      ws.send(JSON.stringify({
-        event:"leave",
-        status: "error",
-        message: "User not found in the room"
-      }));
-    }
+  const userId = socket.data.user.userId;
+  const room = RoomManager.getInstance().getRoom(data.spaceId);
+
+  if (!room) {
+    socket.emit("error", { event: "leave", message: "Room not found" });
+    return;
   }
-  
+
+  const removed = room.removeUser(userId);
+
+  if (removed) {
+    // Leave Socket.IO room
+    socket.leave(data.spaceId);
+    socket.data.user.roomId = "";
+
+    // Broadcast to remaining users
+    socket.to(data.spaceId).emit("player:left", {
+      playerId: userId
+    });
+  }
+}

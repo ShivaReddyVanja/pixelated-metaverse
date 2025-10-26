@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "main": "./dist/index.js",
   "scripts": {
-    "build": "tsc",
-    "dev": "node dist/index.js",
-    "test": "jest"
-
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "start": "ts-node src/index.ts",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
@@ -14,13 +13,18 @@
   "type": "commonjs",
   "description": "",
   "dependencies": {
+
     "@types/dotenv": "^6.1.1",
-    "@types/jsonwebtoken": "^9.0.8",
+    "cookie": "^1.0.2",
     "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.8.1",
     "ws": "^8.18.0"
+    
   },
   "devDependencies": {
-    "@types/ws": "^8.5.14"
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/ws" : "^8.5.14",
+    "@myapp/types":"1.0.0"
   }
 }

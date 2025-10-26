@@ -1,32 +1,46 @@
-import { Context } from "../types/Context";
-import { ParsedData } from "../types/ParsedData";
-export function handleJoin(context:Context, parsedData: Extract<ParsedData,{event:"join"|"leave"}>) {
-    const { id, ws } = context;
-    const room = context.getRoomOrError(parsedData.spaceId);
-    if (!room) return;
-  
-    context.roomId = room.roomid;
-    const emptyPos = room.getEmptyPosition();
-  
-    if (!emptyPos) {
-      ws.send(JSON.stringify({
-        event:"join",
-        status: "error",
-        message: "Room is full , no empty position found"
-      }));
-      return;
-    }
-  
-    const { x, y } = emptyPos;
-    const newPosKey = `${x},${y}`;
-    room.filledPositions.add(newPosKey);
-    room.players.set(id, { x, y });
-  
-    room.broadcastMessage(JSON.stringify({
-      event:"join",
-      status: "success",
-      playerId: id,
-      spawn: { x, y }
-    }));
+import { Server, Socket } from "socket.io";
+import { RoomManager } from "../RoomManager";
+import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "../types/events";
+
+type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
+
+export function handleJoin(
+  io: IoServer,
+  socket: IoSocket,
+  data: Extract<ClientToServerEvents["room:join"], Function> extends (data: infer T, ...args: any[]) => any ? T : never,
+  callback?: (response: any) => void
+) {
+  const userId = socket.data.user.userId;
+  const room = RoomManager.getInstance().getRoom(data.spaceId);
+
+  if (!room) {
+    const error = { event: "join", message: "Room not found" };
+    socket.emit("error", error);
+    callback?.({ status: "error", ...error });
+    return;
   }
-  
+
+  const spawn = room.addUser(userId);
+
+  if (!spawn) {
+    const error = { event: "join", message: "Room is full, no empty position found" };
+    socket.emit("error", error);
+    callback?.({ status: "error", ...error });
+    return;
+  }
+
+  // Join Socket.IO room
+  socket.join(data.spaceId);
+
+  const players = Object.fromEntries(room.players);
+  // Broadcast to everyone in the room (including sender)
+  io.to(data.spaceId).emit("room:joined", {
+    playerId: userId,
+    players,
+    spawn,
+    
+  });
+
+  callback?.({ status: "success", spawn });
+}

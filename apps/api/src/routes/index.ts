@@ -1,69 +1,42 @@
-import Router from "express";
-import { PrismaClient } from "@prisma/client";
-import adminRouter from "./admin";
-import spaceRouter from "./space";
-import userRouter from "./user";
-import { mapSchema } from "../validation/mapSchema";
+import { Router } from "express";
+import { v4 as uuidv4 } from "uuid";
+import { getSocketInstance } from "../services/getSocketInstance";
+import jwt from "jsonwebtoken"
+import dotenv from "dotenv"
+import {JwtTokenPayload} from "@myapp/types"
 
-const router = Router();
-const prisma = new PrismaClient();
-const jwt_secret = process.env.JWT_SECRET;
+const app = Router();
+dotenv.config();
 
-if (!jwt_secret) {
-  throw new Error("JWT_SECRET not found in environment variables");
-}
+const jwt_secret: string = process.env.JWT_SECRET!;
 
-router.get("/maps", async (req, res) => {
-  try {
-    const maps = await prisma.map.findMany({
-      select: {
-        id: true,
-        name: true,
-        thumbnail: true,
-        width: true,
-        height: true,
-      },
-    });
-    res.status(200).json({ maps });
-  } catch (error) {
-    res.status(500).json({ message: "Internal server error", error });
-  }
-});
+app.post("/create-room", async (req, res) => {
 
-router.get("/map/collisions/:id", async (req, res) => {
-  const mapId = req.params.id;
-  try {
-    const map = await prisma.map.findUnique({
-      where: {
-        id: mapId,
-      },
-      select: {
-        data: true,
-      },
-    });
-    if (!map) {
-      res.status(404).send("Invalid map id");
-      return;
+    if (!jwt_secret) {
+        res.status(500).json({ error: "Internal server error" });
+        console.error("Missing jwt secret")
+        return
     }
-
-    const parsedMap = mapSchema.parse(map.data);
-    const collisionLayer = parsedMap.layers.find(layer =>
-      layer.name == "top_layer"
-    );
-
-    if (!collisionLayer ) {
-      res.status(404).json({message:"No collisions layer found in the map",data:parsedMap.layers});
-      return;
+    const {name = "Noobmaster"} = req.body;
+    console.log(req.body)
+    const roomId = uuidv4();
+    const userId = uuidv4();
+    const socketInstance = getSocketInstance();
+    const payload:JwtTokenPayload = {
+        userId,
+        roomId,
+        name
     }
+    // Generate JWT token (expires in 2 hours)
+    const token = jwt.sign(payload, jwt_secret, { expiresIn: "2h" });
+    
+    res.json({
+        userId,
+        roomId,
+        token,
+        socket: socketInstance
+    })
 
-    res.status(200).json({ data: collisionLayer });
-  } catch (error) {
-    res.status(500).json({ message: "Internal server error", error });
-  }
-});
+})
 
-router.use("/user", userRouter);
-router.use("/space", spaceRouter);
-router.use("/admin", adminRouter);
-
-export default router;
+export default app;
