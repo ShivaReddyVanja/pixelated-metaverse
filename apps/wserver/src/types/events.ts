@@ -48,10 +48,11 @@ export interface ClientToServerEvents {
   }) => void;
   
   "player:move": (data: {
-    token: string;
-    spaceId: string;
-    x: number;
-    y: number;
+    playerId:string,
+    position:{
+      x:number,
+      y:number
+    }
   }, callback?: (response: any) => void) => void;
 }
 

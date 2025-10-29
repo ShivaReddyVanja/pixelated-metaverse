@@ -57,6 +57,7 @@ io.on("connection", (socket) => {
 
   // Player movement
   socket.on("player:move", (data, callback) => {
+    console.log("player moved",data)
     handleMove(io, socket, data, callback);
   });
 

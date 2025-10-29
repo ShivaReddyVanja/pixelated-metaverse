@@ -62,24 +62,47 @@ export class Room {
     return this.players.delete(userId);
   }
 
-  movePlayer(userId: string, newX: number, newY: number): boolean {
-    const player = this.players.get(userId);
-    if (!player) return false;
+ movePlayer(userId: string, newX: number, newY: number): boolean {
+  console.log(`[movePlayer] Attempting move for userId=${userId} → (${newX}, ${newY})`);
 
-    const { x, y } = player;
-    
-    if (!this.checkMove(x, y, newX, newY)) return false;
-
-    const newPosKey = `${newX},${newY}`;
-    if (this.filledPositions.has(newPosKey)) return false;
-
-    const oldPosKey = `${x},${y}`;
-    this.filledPositions.delete(oldPosKey);
-    this.filledPositions.add(newPosKey);
-    this.players.set(userId, { x: newX, y: newY });
-
-    return true;
+  const player = this.players.get(userId);
+  if (!player) {
+    console.warn(`[movePlayer] Failed: No player found for userId=${userId}`);
+    return false;
   }
+
+  const { x, y } = player;
+  console.log(`[movePlayer] Current position: (${x}, ${y})`);
+
+  // Check if movement is valid via checkMove
+  const canMove = this.checkMove(x, y, newX, newY);
+  console.log(`[movePlayer] checkMove(${x}, ${y}, ${newX}, ${newY}) → ${canMove}`);
+  if (!canMove) {
+    console.warn(`[movePlayer] Failed: checkMove returned false`);
+    return false;
+  }
+
+  // Prevent occupying an already filled position
+  const newPosKey = `${newX},${newY}`;
+  if (this.filledPositions.has(newPosKey)) {
+    console.warn(`[movePlayer] Failed: Position (${newX}, ${newY}) already occupied`);
+    return false;
+  }
+
+  // Update occupied positions
+  const oldPosKey = `${x},${y}`;
+  this.filledPositions.delete(oldPosKey);
+  this.filledPositions.add(newPosKey);
+
+  console.log(`[movePlayer] Updated filled positions: Removed ${oldPosKey}, added ${newPosKey}`);
+
+  // Update player’s new position
+  this.players.set(userId, { x: newX, y: newY });
+  console.log(`[movePlayer] Success: Player ${userId} moved to (${newX}, ${newY})`);
+
+  return true;
+}
+
 
   checkMove(x: number, y: number, newX: number, newY: number): boolean {
     return (Math.abs(x - newX) === 1 && y === newY) || 

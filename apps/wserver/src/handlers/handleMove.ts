@@ -12,7 +12,8 @@ export function handleMove(
   callback?: (response: any) => void
 ) {
   const userId = socket.data.user.userId;
-  const room = RoomManager.getInstance().getRoom(data.spaceId);
+  const roomId = socket.data.user.roomId
+  const room = RoomManager.getInstance().getRoom(roomId);
 
   if (!room) {
     const error = { event: "move", message: "Room not found" };
@@ -20,8 +21,8 @@ export function handleMove(
     callback?.({ status: "error", ...error });
     return;
   }
-
-  const moved = room.movePlayer(userId, data.x, data.y);
+  console.log("Player positions", data.position,data.position)
+  const moved = room.movePlayer(userId, data.position.x, data.position.y);
 
   if (!moved) {
     const error = { event: "move", message: "Invalid move" };
@@ -31,10 +32,10 @@ export function handleMove(
   }
   
   // Broadcast to everyone in the room
-  io.to(data.spaceId).emit("player:moved", {
+  io.in(roomId).emit("player:moved", {
     playerId: userId,
-    position: { x: data.x, y: data.y }
+    position: { x: data.position.x, y: data.position.y }
   });
 
-  callback?.({ status: "success", position: { x: data.x, y: data.y } });
+  callback?.({ status: "success", position: { x: data.position.x, y: data.position.y } });
 }
