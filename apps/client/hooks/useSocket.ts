@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getMapData } from '@/utils/getMapData';
 import { CreateRoomEvent } from '@/types/events';
+import { handleJoined, handleMoved } from '@/services/socketHandlers';
 
 // Define the expected structure for connection info from your API
 interface ConnectionInfo {
@@ -78,9 +79,9 @@ export function useSocketIO(connectionInfo: ConnectionInfo ) {
       // e.g., initialize player at spawn position
     });
 
-    socket.on("room:joined", (data: { playerId: string; spawn: { x: number; y: number } }) => {
+    socket.on("room:joined", (data: { playerId: string; spawn: { x: number; y: number },players:any }) => {
       console.log("Player joined:", data.playerId, "Spawn:", data.spawn);
-      // e.g., add new player to your map/game state
+      handleJoined(data)
     });
 
     // When a player leaves
@@ -93,7 +94,7 @@ export function useSocketIO(connectionInfo: ConnectionInfo ) {
       "player:moved",
       (data: { playerId: string; position: { x: number; y: number } }) => {
         console.log("Player moved:", data.playerId, "New position:", data.position);
-        // e.g., update player position in your frontend state
+        handleMoved(data);
       }
     );
 

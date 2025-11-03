@@ -42,11 +42,13 @@ export interface RoomCreated extends basicResponse{
     status: status
     spawn: position
 }
-export interface RoomJoined extends basicResponse {
+export interface RoomJoined  {
+    playerId: string,
     spawn:position
     players: Record<string, { x: number; y: number }>;
 }
-export interface PlayerMoved extends basicResponse {
+export interface PlayerMoved {
+    playerId: string,
     position: position
 }
 export interface PlayerLeft extends basicResponse{

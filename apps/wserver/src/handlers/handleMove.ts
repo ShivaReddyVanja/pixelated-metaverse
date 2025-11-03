@@ -23,19 +23,24 @@ export function handleMove(
   }
   console.log("Player positions", data.position,data.position)
   const moved = room.movePlayer(userId, data.position.x, data.position.y);
-
-  if (!moved) {
-    const error = { event: "move", message: "Invalid move" };
-    socket.emit("error", error);
-    callback?.({ status: "error", ...error });
-    return;
-  }
-  
+   
+  if(moved){
   // Broadcast to everyone in the room
   io.in(roomId).emit("player:moved", {
     playerId: userId,
     position: { x: data.position.x, y: data.position.y }
   });
-
+  }
+  else{
+    const currentPosition = room.players.get(userId);
+    if(!currentPosition) return;
+    
+    //We emit to the single socket, not the whole room, to avoid, sending useless data to other players.
+    socket.emit("player:moved", {
+        playerId: userId,
+        position: { x: currentPosition.x, y: currentPosition.y }
+      });
+  }
+  
   callback?.({ status: "success", position: { x: data.position.x, y: data.position.y } });
 }

@@ -1,21 +1,21 @@
 import Game from "@/components/GameScene";
 import { PlayersMap, usePlayersStore } from "@/store/playersStore";
 import { Socket } from "socket.io-client";
+import { gameEmitter } from '@/lib/GameEmitter';
 
 class GameScene extends Phaser.Scene {
-  private localPlayer!: Phaser.Physics.Arcade.Sprite;
+
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private collisionGroup!: Phaser.Physics.Arcade.StaticGroup;
-  private otherPlayers: Map<string, Phaser.Physics.Arcade.Sprite> = new Map();
+  private playerSprites: Map<string, Phaser.Physics.Arcade.Sprite> = new Map();
   private socket!: Socket;
   private localPlayerId!: string;
 
   // Grid & movement
   private tileSize = 32;
-  private isMoving = false;
-  private moveDir = { x: 0, y: 0 }; // direction currently walking (-1/0/1)
-  private targetPos = { x: 0, y: 0 }; // pixel target
-  private moveSpeed = 160; // pixels per second
+  private isMoving = false; // Used as a throttle
+  private lastMoveIntentTime = 0;
+  private moveIntentCooldown = 200;
   private map!: Phaser.Tilemaps.Tilemap;
   private collisionObjects: Phaser.Types.Tilemaps.TiledObject[] = [];
 
@@ -59,6 +59,7 @@ class GameScene extends Phaser.Scene {
     // Create collision objects (from object layer "collisions")
     const collisionsLayer = this.map.getObjectLayer("collisions");
     this.collisionGroup = this.physics.add.staticGroup();
+
     if (collisionsLayer && collisionsLayer.objects) {
       this.collisionObjects = collisionsLayer.objects;
       // create invisible static bodies for physics collisions (optional)
@@ -79,17 +80,6 @@ class GameScene extends Phaser.Scene {
       console.warn("No collision layer found in tilemap.");
     }
 
-    // Local Player - spawn at top-left tile center (you can change spawn tile)
-    // We'll place at tile (0,0) center: (tileSize/2, tileSize/2)
-    this.localPlayer = this.physics.add.sprite(this.tileSize / 2, this.tileSize / 2, "player");
-    this.localPlayer.setCollideWorldBounds(true);
-    this.localPlayer.setOrigin(0.5, 0.5);
-    this.cameras.main.startFollow(this.localPlayer, true);
-    this.cameras.main.setZoom(1);
-
-    // Add actual physics collider between player and collision group (prevents overlapping)
-    this.physics.add.collider(this.localPlayer, this.collisionGroup);
-
     // Set up keyboard controls
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys();
@@ -98,163 +88,160 @@ class GameScene extends Phaser.Scene {
     // Player animations
     this.createAnimations();
 
-    // Subscribe to Zustand store for remote players
-    usePlayersStore.subscribe(
-      (state) => state.players,
-      (players: PlayersMap) => {
-        Object.entries(players).forEach(([id, pos]) => {
-          console.log(id,pos)
-          if (id === this.localPlayerId) return;
 
-          // Assume pos is grid coordinates {x: tileX, y: tileY}
-          // Convert to pixel center positions
-          const px = (pos.x ?? 0) * this.tileSize + this.tileSize / 2;
-          const py = (pos.y ?? 0) * this.tileSize + this.tileSize / 2;
 
-          let sprite = this.otherPlayers.get(id);
-          if (!sprite) {
-            sprite = this.physics.add.sprite(px, py, "player");
-            sprite.setTint(0x00ff00);
-            sprite.setOrigin(0.5, 0.5);
-            console.log("sprite origin set to 0.5")
-            this.otherPlayers.set(id, sprite);
-          } else {
-            console.log("sprite origin set to custom")
-            sprite.setPosition(px, py);
-          }
-        });
+// Subscribe to Zustand store for ALL players
+usePlayersStore.subscribe(
+  (state) => state.players,
+  (players: PlayersMap) => {
+    Object.entries(players).forEach(([id, pos]) => {
+      // Convert grid position to pixel center position
+      const targetPx = (pos.x ?? 0) * this.tileSize + this.tileSize / 2;
+      const targetPy = (pos.y ?? 0) * this.tileSize + this.tileSize / 2;
 
-        // Remove players who left
-        this.otherPlayers.forEach((sprite, id) => {
-          if (!players[id]) {
-            sprite.destroy();
-            this.otherPlayers.delete(id);
-          }
-        });
-      }
-    );
-  }
+      let sprite = this.playerSprites.get(id);
+      console.log("sprite", sprite)
+      if (!sprite) {
+        // --- Player doesn't exist, CREATE them ---
+        console.log("creating sprite",targetPx,targetPy, id)
+        sprite = this.physics.add.sprite(targetPx, targetPy, "player");
+        sprite.setOrigin(0.5, 0.5);
+        this.playerSprites.set(id, sprite);
 
-  update() {
-    if (!this.localPlayer || !this.socket || !this.cursors) return;
-
-    // Use actual delta for frame-rate independence
-    const delta = this.game.loop.delta; // ms since last frame
-    const step = (this.moveSpeed * delta) / 1000; // pixels to move this frame
-
-    // If currently moving, continue interpolation toward target
-    if (this.isMoving) {
-      const dx = this.targetPos.x - this.localPlayer.x;
-      const dy = this.targetPos.y - this.localPlayer.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distance > step) {
-        const angle = Math.atan2(dy, dx);
-        this.localPlayer.x += Math.cos(angle) * step;
-        this.localPlayer.y += Math.sin(angle) * step;
+        if (id === this.localPlayerId) {
+          sprite.setTint(0xccffcc); // Light green tint
+          this.cameras.main.startFollow(sprite, true);
+          this.cameras.main.setZoom(1);
+        } else {
+          sprite.setTint(0xffcc00); // Yellow tint for others
+        }
       } else {
-        // Reached target exactly
-        this.localPlayer.x = this.targetPos.x;
-        this.localPlayer.y = this.targetPos.y;
-        this.isMoving = false;
+        // --- Player exists, ANIMATE them to the new position ---
+        // Calculate direction for animation (except for local player)
+    
+          const dx = targetPx - sprite.x;
+          const dy = targetPy - sprite.y;
 
-        // Emit integer grid position (tile coords)
-        const gridX = Math.round(this.localPlayer.x / this.tileSize - 0.5); // convert center to tile index
-        const gridY = Math.round(this.localPlayer.y / this.tileSize - 0.5);
-        this.socket.emit("player:move", {
-          playerId: this.localPlayerId,
-          position: { x: gridX, y: gridY },
+          if (dx > 0) sprite.anims.play("right", true);
+          else if (dx < 0) sprite.anims.play("left", true);
+          else if (dy > 0) sprite.anims.play("down", true);
+          else if (dy < 0) sprite.anims.play("up", true);
+        
+        const isAlreadyAtTarget = (sprite.x === targetPx && sprite.y === targetPy);
+        // Create the tween
+        this.tweens.add({
+          targets: sprite,
+          x: targetPx,
+          y: targetPy,
+          duration: 180, 
+          ease: 'Linear',
+          onComplete: () => {
+            // If it's not the local player, stop their animation
+            if (id !== this.localPlayerId) {
+             // Add a check here too for safety
+              if (sprite && sprite.anims) {
+                sprite.anims.stop();
+              }
+            }
+
+            // If this is the local player, reset the 'isMoving' throttle
+            if (id === this.localPlayerId) {
+              if (!sprite) {
+                console.log("No spriote")
+                return
+              };
+              // Check if a key is *still* held down
+              const cursors = this.cursors;
+              if (
+                !cursors.left?.isDown &&
+                !cursors.right?.isDown &&
+                !cursors.up?.isDown &&
+                !cursors.down?.isDown
+              ) {
+                // --- THIS IS THE FIX ---
+                // Keys are up, so stop the animation and unlock movement
+                this.isMoving = false;
+                if (sprite && sprite.anims) {
+                  sprite.anims.stop(); // <-- Add this line
+                }
+              } else {
+                // Key is still held, immediately allow next move
+                this.isMoving = false;
+                // We must call update manually once to trigger
+                // the next "held key" movement
+                this.update(); 
+              }
+            }
+          }
         });
-
-        // After finishing tile: if holding same direction, continue automatically
-        this.handleContinuousMove();
       }
+    });
 
-      return;
-    }
-
-    // If idle and a key is pressed, start movement (holding will continue)
-    if (this.cursors.left?.isDown) {
-      this.startMove(-1, 0, "left");
-    } else if (this.cursors.right?.isDown) {
-      this.startMove(1, 0, "right");
-    } else if (this.cursors.up?.isDown) {
-      this.startMove(0, -1, "up");
-    } else if (this.cursors.down?.isDown) {
-      this.startMove(0, 1, "down");
-    } else {
-      // idle - ensure animation stopped
-      this.localPlayer.setVelocity(0, 0);
-      this.localPlayer.anims.stop();
-    }
+    // --- Remove players who left ---
+    this.playerSprites.forEach((sprite, id) => {
+      if (!players[id]) {
+        sprite.destroy();
+        this.playerSprites.delete(id);
+      }
+    });
+  },
+  // This equality check is important for performance
+  {
+    fireImmediately: true
+  }
+);
   }
 
-  // Start one tile move in direction dx,dy (dx/dy in -1/0/1)
-  private startMove(dx: number, dy: number, anim: string) {
-    if (this.isMoving) return;
+ update() {
+  if (!this.socket || !this.cursors) return;
 
-    // compute next tile target in pixels (we keep positions as centers)
-    const newX = this.localPlayer.x + dx * this.tileSize;
-    const newY = this.localPlayer.y + dy * this.tileSize;
+  // --- This is the key change ---
+  // If we are 'moving' (waiting for a server response), don't send new requests.
+  if (this.isMoving) {
+    console.log("yes moving")
+    return;
+  }
 
-    // collision check: test target against collision objects
-    if (this.isTileBlocked(newX, newY)) {
-      // cannot start move; stop any animation
-      this.localPlayer.anims.stop();
-      return;
-    }
+  let targetX: number | null = null;
+  let targetY: number | null = null;
+  let direction = "";
 
+  // Get the local player's CURRENT grid position from the store
+  const allPlayers = usePlayersStore.getState().players;
+  const localPlayerPos = allPlayers[this.localPlayerId];
+
+  if (!localPlayerPos) return; // Local player isn't in the store yet
+
+  // Check for key presses
+  if (this.cursors.left?.isDown) {
+    targetX = localPlayerPos.x - 1;
+    targetY = localPlayerPos.y;
+    direction = "left";
+  } else if (this.cursors.right?.isDown) {
+    targetX = localPlayerPos.x + 1;
+    targetY = localPlayerPos.y;
+    direction = "right";
+  } else if (this.cursors.up?.isDown) {
+    targetX = localPlayerPos.x;
+    targetY = localPlayerPos.y - 1;
+    direction = "up";
+  } else if (this.cursors.down?.isDown) {
+    targetX = localPlayerPos.x;
+    targetY = localPlayerPos.y + 1;
+    direction = "down";
+  }
+
+  // If a key is pressed, send the move event
+  if (targetX !== null && targetY !== null) {
+    // Set throttle. We are now 'moving' and waiting for the server.
     this.isMoving = true;
-    this.moveDir = { x: dx, y: dy };
-    this.targetPos = { x: newX, y: newY };
-    this.localPlayer.anims.play(anim, true);
+
+    // Send the event your server is listening for
+    this.socket.emit("player:move", {
+      position: { x: targetX, y: targetY },
+    });
   }
-
-  // If after finishing a tile the movement key is still held, continue in same dir
-  private handleContinuousMove() {
-    // Continue only if the same direction key is currently held
-    if (this.moveDir.x === -1 && this.cursors.left?.isDown) {
-      this.startMove(-1, 0, "left");
-    } else if (this.moveDir.x === 1 && this.cursors.right?.isDown) {
-      this.startMove(1, 0, "right");
-    } else if (this.moveDir.y === -1 && this.cursors.up?.isDown) {
-      this.startMove(0, -1, "up");
-    } else if (this.moveDir.y === 1 && this.cursors.down?.isDown) {
-      this.startMove(0, 1, "down");
-    } else {
-      // No continuation — stop anim
-      this.localPlayer.anims.stop();
-    }
-  }
-
-  // Check if the target pixel center (x,y) intersects any collision object.
-  // We assume collisionObjects are rectangles (from Tiled). This checks tile-center against obj bbox.
-  private isTileBlocked(px: number, py: number): boolean {
-    // Convert center px/py to a simple point.
-    for (const obj of this.collisionObjects) {
-      const ox = obj.x ?? 0;
-      const oy = obj.y ?? 0;
-      const ow = obj.width ?? this.tileSize;
-      const oh = obj.height ?? this.tileSize;
-
-      // Tiled object origin: usually top-left (obj.x, obj.y). We'll treat as top-left.
-      const left = ox;
-      const top = oy;
-      const right = ox + ow;
-      const bottom = oy + oh;
-
-      // px/py are centers, so check if center point lies within object rectangle
-      if (px >= left && px <= right && py >= top && py <= bottom) {
-        return true;
-      }
-    }
-
-    // Additionally, check world bounds
-    if (px - this.tileSize / 2 < 0 || py - this.tileSize / 2 < 0) return true;
-    if (px + this.tileSize / 2 > this.map.widthInPixels || py + this.tileSize / 2 > this.map.heightInPixels) return true;
-
-    return false;
-  }
+}
 
   private createAnimations() {
     this.anims.create({
@@ -282,6 +269,7 @@ class GameScene extends Phaser.Scene {
       repeat: -1,
     });
   }
+
 }
 
 export default GameScene;
