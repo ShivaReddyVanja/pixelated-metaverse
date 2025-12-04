@@ -12,23 +12,26 @@ interface GameSceneProps {
   height?: number;
 }
 
-const Game: React.FC<GameSceneProps> = ({ width = 1024, height = 960 }) => {
+const Game: React.FC<GameSceneProps> = () => {
+  
   const gameRef = useRef<HTMLDivElement>(null);
   const game = useRef<Phaser.Game | null>(null);
 
-  const saved:SocketConnectionData = JSON.parse(localStorage.getItem("connectionInfo") || "{}");
+  const saved: SocketConnectionData = JSON.parse(localStorage.getItem("connectionInfo") || "{}");
 
-  console.log("this is saved data",saved)
+ 
 
-  const {isConnected,socketRef} = useSocketIO(saved);
-  
+  const { isConnected, socketRef } = useSocketIO(saved);
+
   useEffect(() => {
-    if (gameRef.current && !game.current) {
+    if (typeof window !== 'undefined' && gameRef.current && !game.current) {
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
-        width,
-        height,
+        width: window.innerWidth,
+        height: window.innerHeight,
         parent: gameRef.current,
+        pixelArt: true,
+        render: { pixelArt: true },
         physics: {
           default: 'arcade',
           arcade: {
@@ -38,23 +41,39 @@ const Game: React.FC<GameSceneProps> = ({ width = 1024, height = 960 }) => {
             },
             debug: false
           }
+        },
+        scale: {
+          mode: Phaser.Scale.RESIZE,
+          autoCenter: Phaser.Scale.CENTER_BOTH
         }
       };
 
       game.current = new Phaser.Game(config);
-       // Add the scene instance with constructor parameters
+      // Add the scene instance with constructor parameters
+      //@ts-ignore
       const gameScene = new GameScene(socketRef.current, saved.userId);
       game.current.scene.add('GameScene', gameScene, true);
     }
     return () => {
       game.current?.destroy(true);
       game.current = null;
-      
-    };
-  }, [width, height]);
 
-  
-  return <div ref={gameRef} />;
+    };
+  }, []);
+
+
+  return (
+    <div
+      ref={gameRef}
+      style={{
+        width: '100vw',
+        height: '100vh',
+        overflow: 'hidden',
+        margin: 0,
+        padding: 0
+      }}
+    />
+  );
 };
 
 export default Game;

@@ -3,6 +3,10 @@ type PlayerPosition = { x: number; y: number };
 type PlayersMap = Record<string, PlayerPosition>;
 
 export interface ServerToClientEvents {
+  "webrtc-signaling": (data: {
+    from: string;
+    data: any;
+  }) => void;
 
   "room:created": (data: {
      playerId:string;
@@ -24,10 +28,15 @@ export interface ServerToClientEvents {
   "player:left": (data: { 
     playerId: string 
   }) => void;
+
   "error": (data: { event: string; message: string }) => void;
 }
 
 export interface ClientToServerEvents {
+  "webrtc-signaling": (data: {
+    to: string;
+    data: any;
+  }) => void;
   "room:create": (data: {
     token: string;
     name: string;

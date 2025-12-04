@@ -5,7 +5,6 @@ export class RoomManager {
     static instance :RoomManager
     rooms:Map<string,Room> //Map roomId to room object
     
-
     private constructor(){
         this.rooms = new Map()
     }

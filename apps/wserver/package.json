@@ -13,7 +13,7 @@
   "type": "commonjs",
   "description": "",
   "dependencies": {
-
+    "@shared/jwt":"*",
     "@types/dotenv": "^6.1.1",
     "cookie": "^1.0.2",
     "dotenv": "^16.4.7",

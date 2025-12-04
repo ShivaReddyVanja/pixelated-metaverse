@@ -6,51 +6,49 @@
 
 generator client {
   provider = "prisma-client-js"
-  
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-model User{
-  id         String         @unique @id @default(uuid())
-  username   String         @unique
-  name       String?       
-  email      String 
-  role       Role           @default(user)
-  password   String
-  avatar     String?
-  spaces     Space[]   
-  @@map("users")      
-  
+model User {
+  id       String  @id @unique @default(uuid())
+  username String  @unique
+  name     String?
+  email    String
+  role     Role    @default(user)
+  password String
+  avatar   String?
+  spaces   Space[]
+
+  @@map("users")
 }
 
-model Space{
-  id           String         @unique @id @default(uuid())
-  name         String 
-  description  String   
-  width        Int
-  height       Int
-  thumbnail    String
-  mapId        String 
-  userId       String  
-  user         User    @relation(fields : [userId], references: [id])
+model Space {
+  id          String @id @unique @default(uuid())
+  name        String
+  description String
+  width       Int
+  height      Int
+  thumbnail   String
+  mapId       String
+  userId      String
+  user        User   @relation(fields: [userId], references: [id])
 }
 
-model Map{
-  id           String           @unique @id @default(uuid())
-  name         String        @unique
-  width        Int
-  height       Int
-  thumbnail    String
-  data         Json
+model Map {
+  id        String @id @unique @default(uuid())
+  name      String @unique
+  width     Int
+  height    Int
+  thumbnail String
+  data      Json
+
   @@map("maps")
-
 }
 
-enum Role{
+enum Role {
   admin
   user
 }

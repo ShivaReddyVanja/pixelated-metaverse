@@ -38,7 +38,7 @@ export default function CreateRoomPage() {
       
      console.log(data)
 
-     router.push("/meet/jdfjdfb")
+     router.push("/meet")
 
     }
     catch(e:any){

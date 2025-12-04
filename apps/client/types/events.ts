@@ -1,7 +1,7 @@
 export type EventType = "create" | "join" | "move" | "leave";
 
-export type IncomingEvent = | { 
-    event: "create", 
+export type IncomingEvent = | {
+    event: "create",
 }
 
 export type CreateRoomEvent = {
@@ -32,25 +32,24 @@ type position = {
 type status = "success" | "error";
 
 interface basicResponse {
-    event: EventType,
-    status: status,
+    event?: EventType,
+    status?: status,
     playerId: string,
-    message: string
+    message?: string
 }
-export interface RoomCreated extends basicResponse{
+export interface RoomCreated extends basicResponse {
     roomId: string
-    status: status
     spawn: position
 }
-export interface RoomJoined  {
+export interface RoomJoined {
     playerId: string,
-    spawn:position
+    spawn: position
     players: Record<string, { x: number; y: number }>;
 }
 export interface PlayerMoved {
     playerId: string,
     position: position
 }
-export interface PlayerLeft extends basicResponse{
-   
+export interface PlayerLeft extends basicResponse {
+
 }

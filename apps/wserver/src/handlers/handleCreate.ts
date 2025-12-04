@@ -17,7 +17,7 @@ export function handleCreate(
 
   if (room) {
 
-    const position = room.addUser(userId);
+    const position = room.addUser(userId, socket.id);
     if (!position) {
       socket.emit("error", { event: "join", message: "Room is full" });
       callback?.({ status: "error", event: "join", message: "Room is full" });
@@ -26,7 +26,6 @@ export function handleCreate(
     socket.join(data.spaceId);
 
     const players = Object.fromEntries(room.players);
-
     socket.emit("room:joined", {
       playerId: userId,
       players,
@@ -58,18 +57,17 @@ export function handleCreate(
     objectsArray: data.objectsArray
   });
 
- const newRoom = RoomManager.getInstance().setRoom(data.spaceId, newRoomData);
-  
+  const newRoom = RoomManager.getInstance().setRoom(data.spaceId, newRoomData);
+
   // Join the Socket.IO room (automatic room management!)
   socket.join(data.spaceId);
-  console.log("Room is created");
-  const position = newRoom?.addUser(userId);
+  const position = newRoom?.addUser(userId, socket.id);
 
-  if(!position){
-    socket.emit("error",{event:"join",message:"Room is full"})
+  if (!position) {
+    socket.emit("error", { event: "join", message: "Room is full" })
     return;
   }
-  
+
   const response = {
     status: "success",
     roomId: newRoomData.roomId,
@@ -77,9 +75,9 @@ export function handleCreate(
   };
 
   socket.emit("room:created", {
-     playerId:userId,
-     roomId: newRoomData.roomId,
-     spawn: { x: 0, y: 0 } 
-    });
+    playerId: userId,
+    roomId: newRoomData.roomId,
+    spawn: { x: 0, y: 0 }
+  });
   callback?.(response);
 }

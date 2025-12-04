@@ -21,15 +21,17 @@ export function handleMove(
     callback?.({ status: "error", ...error });
     return;
   }
-  console.log("Player positions", data.position,data.position)
   const moved = room.movePlayer(userId, data.position.x, data.position.y);
-   
+  console.log(socket.id);
   if(moved){
+    
+  room.updatePlayerProximity(io, userId);
   // Broadcast to everyone in the room
   io.in(roomId).emit("player:moved", {
     playerId: userId,
     position: { x: data.position.x, y: data.position.y }
   });
+
   }
   else{
     const currentPosition = room.players.get(userId);

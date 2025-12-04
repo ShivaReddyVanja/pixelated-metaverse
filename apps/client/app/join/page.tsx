@@ -52,10 +52,9 @@ export default function JoinRoomPage() {
         token: data.token
       }))
       
-      console.log("Joined Room Data:", data);
-
+     
       // 4. Redirect to the meet page using the actual room ID
-      router.push(`/meet/${data.roomId}`);
+      router.push(`/meet`);
 
     }
     catch(e:any){

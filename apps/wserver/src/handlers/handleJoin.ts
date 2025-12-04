@@ -21,7 +21,7 @@ export function handleJoin(
     return;
   }
 
-  const spawn = room.addUser(userId);
+  const spawn = room.addUser(userId, socket.id);
 
   if (!spawn) {
     const error = { event: "join", message: "Room is full, no empty position found" };
@@ -39,7 +39,6 @@ export function handleJoin(
     playerId: userId,
     players,
     spawn,
-    
   });
 
   callback?.({ status: "success", spawn });
