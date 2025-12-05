@@ -6,6 +6,7 @@ import { usePlayersStore } from '@/store/playersStore';
 import GameScene from '@/lib/GameScene';
 import { useSocketIO } from '@/hooks/useSocket';
 import { SocketConnectionData } from '@/types';
+import { VideoLayer } from '@/components/VideoLayer';
 
 interface GameSceneProps {
   width?: number;
@@ -63,6 +64,7 @@ const Game: React.FC<GameSceneProps> = () => {
 
 
   return (
+    <>
     <div
       ref={gameRef}
       style={{
@@ -73,6 +75,8 @@ const Game: React.FC<GameSceneProps> = () => {
         padding: 0
       }}
     />
+    <VideoLayer/>
+    </>
   );
 };
 

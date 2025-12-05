@@ -1,3 +1,4 @@
+import { useMediaStore } from "@/store/mediaStore";
 import { Socket } from "socket.io-client";
 
 export class WebRTCManager {
@@ -12,8 +13,9 @@ export class WebRTCManager {
     this.setupSocketListeners();
   }
 
-  async initLocalMedia(audio = true, video = false) {
+  async initLocalMedia(audio = true, video = true) {
     if (!this.localStream) {
+      console.log("aviable",navigator.mediaDevices)
       this.localStream = await navigator.mediaDevices.getUserMedia({
         audio,
         video,
@@ -102,7 +104,10 @@ export class WebRTCManager {
 
     // receive remote stream
     pc.ontrack = (event) => {
-      this.remoteStreams.set(peerSocketId, event.streams[0]);
+      const stream = event.streams[0];
+      if(!stream) return;
+      this.remoteStreams.set(peerSocketId, stream);
+      useMediaStore.getState().addRemoteStream(peerSocketId,stream)
       this.attachRemoteAudio(peerSocketId);
     };
 
@@ -143,6 +148,8 @@ export class WebRTCManager {
     }
     this.peers.delete(peerSocketId);
     this.remoteStreams.delete(peerSocketId);
+
+    useMediaStore.getState().removeRemoteStream(peerSocketId);
 
     const audio = document.getElementById(`audio-${peerSocketId}`);
     if (audio) audio.remove();
