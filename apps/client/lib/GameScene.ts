@@ -1,5 +1,6 @@
 import { PlayersMap, usePlayersStore } from "@/store/playersStore";
 import { Socket } from "socket.io-client";
+import { getMapCollisionData } from "@/utils/getMapData";
 
 class GameScene extends Phaser.Scene {
 
@@ -12,8 +13,11 @@ class GameScene extends Phaser.Scene {
   // Grid & movement
   private tileSize = 32;
   private isMoving = false; // Used as a throttle
+  private localGridPos: { x: number, y: number } | null = null; // Client-side authority
   private map!: Phaser.Tilemaps.Tilemap;
   private collisionObjects: Phaser.Types.Tilemaps.TiledObject[] = [];
+  private playerBlockedIndices: Set<number> = new Set()
+  private blockedIndices: Set<number> = new Set();
 
   constructor(socket: Socket, localPlayerId: string) {
     super({ key: "GameScene" });
@@ -36,6 +40,10 @@ class GameScene extends Phaser.Scene {
   create() {
     // Create the tilemap from the loaded JSON
     this.map = this.make.tilemap({ key: "map" });
+
+    // Load collision data from the shared utility
+    const collisionData = getMapCollisionData();
+    this.blockedIndices = new Set(collisionData.blockedTileIndices);
 
     // load tilesets , first :tileset name(must match with tilemap json), second :image name
     const tileSet = this.map.addTilesetImage("tileset", "tileset")
@@ -84,6 +92,8 @@ class GameScene extends Phaser.Scene {
       (state) => state.players,
       (players: PlayersMap) => {
         Object.entries(players).forEach(([id, pos]) => {
+
+
           // Convert grid position to pixel center position
           const targetPx = (pos.x ?? 0) * this.tileSize + this.tileSize / 2;
           const targetPy = (pos.y ?? 0) * this.tileSize + this.tileSize / 2;
@@ -110,16 +120,55 @@ class GameScene extends Phaser.Scene {
             if (id === this.localPlayerId) {
               sprite.setTint(0xccffcc); // Light green tint
               // Configure camera to smoothly follow the local player
-              this.cameras.main.startFollow(sprite, false);
-              this.cameras.main.setZoom(1);
+              this.cameras.main.startFollow(sprite, true, 0.2, 0.2);
+              this.cameras.main.setZoom(2);
               this.cameras.main.roundPixels = true;
+
+              // Initialize local authority position
+              this.localGridPos = { x: pos.x ?? 0, y: pos.y ?? 0 };
             } else {
               sprite.setTint(0xffcc00); // Yellow tint for others
             }
           } else {
             // --- Player exists, ANIMATE them to the new position ---
-            // Calculate direction for animation (except for local player)
 
+            // OPTIMISTIC MOVE CHANGE:
+            // For the local player, we typically ignore server updates to avoid stutter.
+            // HOWEVER, we must check for "Rejection" or "Desync".
+            if (id === this.localPlayerId) {
+              // Server Reconciliation:
+              // If our local position is too far from what the server thinks, 
+              // the server likely rejected our move (e.g. anti-cheat, collision we missed).
+              // We "Snap Back" to the server's truth.
+              const serverX = pos.x ?? 0;
+              const serverY = pos.y ?? 0;
+              const localX = this.localGridPos?.x ?? 0;
+              const localY = this.localGridPos?.y ?? 0;
+
+              const dist = Math.abs(serverX - localX) + Math.abs(serverY - localY);
+
+              if (dist > 0) {
+                // > 1 tile difference means we are desynced. Snap back.
+                console.warn("Reconciliation: Snapping back to server position", { server: pos, local: this.localGridPos });
+
+                this.localGridPos = { x: serverX, y: serverY };
+
+                // Stop existing tweens to prevent fighting
+                this.tweens.killTweensOf(sprite);
+
+                // Teleport immediately
+                sprite.setPosition(targetPx, targetPy);
+                if (sprite && sprite.anims) {
+                  sprite.anims.stop();
+                }
+                this.isMoving = false; // Unlock movement
+              }
+
+              // Always return here so we don't double-animate
+              return;
+            }
+
+            // Calculate direction for animation (except for local player)
             const dx = targetPx - sprite.x;
             const dy = targetPy - sprite.y;
 
@@ -144,35 +193,6 @@ class GameScene extends Phaser.Scene {
                   // Add a check here too for safety
                   if (sprite && sprite.anims) {
                     sprite.anims.stop();
-                  }
-                }
-
-                // If this is the local player, reset the 'isMoving' throttle
-                if (id === this.localPlayerId) {
-                  if (!sprite) {
-                    console.log("No sprite")
-                    return
-                  };
-                  // Check if a key is *still* held down
-                  const cursors = this.cursors;
-                  if (
-                    !cursors.left?.isDown &&
-                    !cursors.right?.isDown &&
-                    !cursors.up?.isDown &&
-                    !cursors.down?.isDown
-                  ) {
-                    // --- THIS IS THE FIX ---
-                    // Keys are up, so stop the animation and unlock movement
-                    this.isMoving = false;
-                    if (sprite && sprite.anims) {
-                      sprite.anims.stop(); // <-- Add this line
-                    }
-                  } else {
-                    // Key is still held, immediately allow next move
-                    this.isMoving = false;
-                    // We must call update manually once to trigger
-                    // the next "held key" movement
-                    this.update();
                   }
                 }
               }
@@ -200,10 +220,8 @@ class GameScene extends Phaser.Scene {
   update() {
     if (!this.socket || !this.cursors) return;
 
-    // --- This is the key change ---
-    // If we are 'moving' (waiting for a server response), don't send new requests.
+    // Throttle: If we are currently tweening to the next tile, wait.
     if (this.isMoving) {
-      console.log("yes moving")
       return;
     }
 
@@ -211,40 +229,94 @@ class GameScene extends Phaser.Scene {
     let targetY: number | null = null;
     let direction = "";
 
-    // Get the local player's CURRENT grid position from the store
-    const allPlayers = usePlayersStore.getState().players;
-    const localPlayerPos = allPlayers[this.localPlayerId];
-
-    if (!localPlayerPos) return; // Local player isn't in the store yet
-
+    // Use LOCAL state, not the store state
+    if (!this.localGridPos) return;
 
     // Check for key presses
     if (this.cursors.left?.isDown) {
-      targetX = localPlayerPos.x - 1;
-      targetY = localPlayerPos.y;
+      targetX = this.localGridPos.x - 1;
+      targetY = this.localGridPos.y;
       direction = "left";
     } else if (this.cursors.right?.isDown) {
-      targetX = localPlayerPos.x + 1;
-      targetY = localPlayerPos.y;
+      targetX = this.localGridPos.x + 1;
+      targetY = this.localGridPos.y;
       direction = "right";
     } else if (this.cursors.up?.isDown) {
-      targetX = localPlayerPos.x;
-      targetY = localPlayerPos.y - 1;
+      targetX = this.localGridPos.x;
+      targetY = this.localGridPos.y - 1;
       direction = "up";
     } else if (this.cursors.down?.isDown) {
-      targetX = localPlayerPos.x;
-      targetY = localPlayerPos.y + 1;
+      targetX = this.localGridPos.x;
+      targetY = this.localGridPos.y + 1;
       direction = "down";
     }
 
-    // If a key is pressed, send the move event
+    // If a key is pressed, process the move IMMEDIATELY (Optimistic)
     if (targetX !== null && targetY !== null) {
-      // Set throttle. We are now 'moving' and waiting for the server.
+
+      // COLLISION CHECK:
+      // Don't walk into walls (Objects layer) or other players
+      if (!this.isTileWalkable(targetX, targetY) || this.isTileOccupiedByPlayer(targetX, targetY)) {
+        // If we hit a wall or another player, stop the animation
+        const sprite = this.playerSprites.get(this.localPlayerId);
+        if (sprite && sprite.anims.isPlaying) {
+          sprite.anims.stop();
+        }
+        return;
+      }
+
+
+
       this.isMoving = true;
 
-      // Send the event your server is listening for
+      // 1. Update local state immediately
+      this.localGridPos = { x: targetX, y: targetY };
+
+      // 2. Send to server
       this.socket.emit("player:move", {
         position: { x: targetX, y: targetY },
+      });
+
+      // 3. Helper to get pixel coordinates
+      const targetPx = targetX * this.tileSize + this.tileSize / 2;
+      const targetPy = targetY * this.tileSize + this.tileSize / 2;
+
+      const sprite = this.playerSprites.get(this.localPlayerId);
+      if (!sprite) {
+        this.isMoving = false;
+        return;
+      }
+
+      // 4. Animate and Tween Locallly
+      if (direction === "left") sprite.anims.play("left", true);
+      else if (direction === "right") sprite.anims.play("right", true);
+      else if (direction === "up") sprite.anims.play("up", true);
+      else if (direction === "down") sprite.anims.play("down", true);
+
+      this.tweens.add({
+        targets: sprite,
+        x: targetPx,
+        y: targetPy,
+        duration: 180, // Keep speed consistent
+        ease: 'Linear',
+        onComplete: () => {
+          // Logic for continuous movement
+          const cursors = this.cursors;
+          if (
+            !cursors.left?.isDown &&
+            !cursors.right?.isDown &&
+            !cursors.up?.isDown &&
+            !cursors.down?.isDown
+          ) {
+            // Keys released -> stop
+            this.isMoving = false;
+            sprite.anims.stop();
+          } else {
+            // Keys held -> keep going immediately
+            this.isMoving = false;
+            this.update(); // Recursively trigger next move
+          }
+        }
       });
     }
   }
@@ -274,6 +346,36 @@ class GameScene extends Phaser.Scene {
       frameRate: 10,
       repeat: -1,
     });
+  }
+
+  private isTileWalkable(x: number, y: number): boolean {
+    // 1. Check bounds
+    if (x < 0 || y < 0 || x >= this.map.width || y >= this.map.height) {
+      return false;
+    }
+    // 2. Check collision set using shared logic
+    const index = y * this.map.width + x;
+    return !this.blockedIndices.has(index);
+  }
+
+  private isTileOccupiedByPlayer(x: number, y: number): boolean {
+    // Get current player positions from the store
+    const players = usePlayersStore.getState().players;
+
+    // Check if any player (except the local player) is at this position
+    for (const [playerId, pos] of Object.entries(players)) {
+      // Skip checking against ourselves
+      if (playerId === this.localPlayerId) {
+        continue;
+      }
+
+      // Check if this player is at the target position
+      if (pos.x === x && pos.y === y) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
 }

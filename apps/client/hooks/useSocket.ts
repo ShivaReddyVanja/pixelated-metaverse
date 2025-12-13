@@ -67,7 +67,7 @@ export function useSocketIO(connectionInfo: ConnectionInfo) {
       setIsConnected(true);
 
       socket.emit('room:create', roomCreationData);
-      webrtcManager.initLocalMedia(true, false);
+     
     });
 
     socket.on('disconnect', (reason) => {

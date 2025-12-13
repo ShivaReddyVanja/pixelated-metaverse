@@ -54,7 +54,7 @@ export default function JoinRoomPage() {
       
      
       // 4. Redirect to the meet page using the actual room ID
-      router.push(`/meet`);
+      router.push(`/meet?id=${roomId}`);
 
     }
     catch(e:any){

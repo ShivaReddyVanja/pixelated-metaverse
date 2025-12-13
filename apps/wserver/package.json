@@ -4,7 +4,7 @@
   "main": "./dist/index.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "start": "ts-node src/index.ts",
+    "start": "node dist/index.js",
     "build": "tsc"
   },
   "keywords": [],
@@ -13,18 +13,17 @@
   "type": "commonjs",
   "description": "",
   "dependencies": {
-    "@shared/jwt":"*",
+    "@shared/jwt": "*",
     "@types/dotenv": "^6.1.1",
     "cookie": "^1.0.2",
     "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.2",
     "socket.io": "^4.8.1",
     "ws": "^8.18.0"
-    
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/ws" : "^8.5.14",
-    "@myapp/types":"1.0.0"
+    "@types/ws": "^8.5.14",
+    "@myapp/types": "1.0.0"
   }
 }

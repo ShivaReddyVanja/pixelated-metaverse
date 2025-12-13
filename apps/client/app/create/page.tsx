@@ -38,7 +38,7 @@ export default function CreateRoomPage() {
       
      console.log(data)
 
-     router.push("/meet")
+     router.push(`/meet?id=${data.roomId}`)
 
     }
     catch(e:any){

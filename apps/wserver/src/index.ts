@@ -12,7 +12,12 @@ dotenv.config();
 
 import { verifyToken } from "@shared/jwt";
 
-const httpServer = createServer();
+const httpServer = createServer((req, res) => {
+  if (req.method === "GET" && req.url === "/health") {
+    res.writeHead(200);
+    res.end("OK");
+  }
+});
 
 // Create Socket.IO server with types
 const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
@@ -25,8 +30,8 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEve
 // Authentication middleware
 io.use(async (socket, next) => {
   try {
-    const token = socket.handshake.auth.token; 
-      if (!token) {
+    const token = socket.handshake.auth.token;
+    if (!token) {
       return next(new Error("Authentication error: No token in cookies"));
     }
     const decoded = await verifyToken(token);
@@ -60,10 +65,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("webrtc-signaling", ({ to, data }) => {
-      if (!to) return;
-      // Attach sender id so recipient knows who it's from
-      io.to(to).emit("webrtc-signaling", { from: socket.id, data });
-    });
+    if (!to) return;
+    // Attach sender id so recipient knows who it's from
+    io.to(to).emit("webrtc-signaling", { from: socket.id, data });
+  });
 
   // Handle disconnection
   socket.on("disconnect", () => {

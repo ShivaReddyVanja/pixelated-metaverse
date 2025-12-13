@@ -14,15 +14,31 @@ export class WebRTCManager {
   }
 
   async initLocalMedia(audio = true, video = true) {
+    navigator.mediaDevices.enumerateDevices().then(devices => {
+    devices.forEach(d => console.log(d.kind, d.label));
+});
     if (!this.localStream) {
-      console.log("aviable",navigator.mediaDevices)
+      console.log("aviable", navigator.mediaDevices)
       this.localStream = await navigator.mediaDevices.getUserMedia({
         audio,
         video,
       });
+      console.log("LOCAL STREAM TRACKS:", {
+        audio: this.localStream.getAudioTracks(),
+        video: this.localStream.getVideoTracks()
+      });
+      useMediaStore.getState().setLocalStream(this.localStream);
     }
     return this.localStream;
   }
+
+  stopLocalMedia() {
+  if (this.localStream) {
+    this.localStream.getTracks().forEach(track => track.stop());
+    this.localStream = null;
+    useMediaStore.getState().setLocalStream(null);
+  }
+}
 
   setupSocketListeners() {
     // incoming signaling from server
@@ -105,9 +121,10 @@ export class WebRTCManager {
     // receive remote stream
     pc.ontrack = (event) => {
       const stream = event.streams[0];
-      if(!stream) return;
+      if (!stream) return;
       this.remoteStreams.set(peerSocketId, stream);
-      useMediaStore.getState().addRemoteStream(peerSocketId,stream)
+      console.log("peer socket", peerSocketId, stream)
+      useMediaStore.getState().addRemoteStream(peerSocketId, stream)
       this.attachRemoteAudio(peerSocketId);
     };
 
@@ -153,6 +170,10 @@ export class WebRTCManager {
 
     const audio = document.getElementById(`audio-${peerSocketId}`);
     if (audio) audio.remove();
+
+    if(this.peers.size<1){
+      this.stopLocalMedia();
+    }
   }
 
   // create audio element and play stream
@@ -175,44 +196,44 @@ export class WebRTCManager {
   }
 
   cleanupPeer(peerId: string) {
-  const pc = this.peers.get(peerId);
-  if (!pc) return; // already cleaned
+    const pc = this.peers.get(peerId);
+    if (!pc) return; // already cleaned
 
-  try {
-    // 1. Stop transceivers (some browsers require this)
-    if (pc.getTransceivers) {
-      pc.getTransceivers().forEach(t => {
-        try { t.stop && t.stop(); } catch (_) {}
+    try {
+      // 1. Stop transceivers (some browsers require this)
+      if (pc.getTransceivers) {
+        pc.getTransceivers().forEach(t => {
+          try { t.stop && t.stop(); } catch (_) { }
+        });
+      }
+
+      // 2. Stop all local tracks attached to this peer (optional)
+      pc.getSenders().forEach(sender => {
+        try { sender.track?.stop(); } catch (_) { }
+        try { sender.replaceTrack(null); } catch (_) { }
       });
+
+      // 3. Stop all remote tracks (video/audio)
+      pc.getReceivers().forEach(receiver => {
+        try { receiver.track?.stop(); } catch (_) { }
+      });
+
+      // 4. Close the peer connection
+      try { pc.close(); } catch (_) { }
+
+    } catch (err) {
+      console.warn("Error while cleaning peer:", peerId, err);
     }
 
-    // 2. Stop all local tracks attached to this peer (optional)
-    pc.getSenders().forEach(sender => {
-      try { sender.track?.stop(); } catch (_) {}
-      try { sender.replaceTrack(null); } catch (_) {}
-    });
+    // 5. Remove from map
+    this.peers.delete(peerId);
 
-    // 3. Stop all remote tracks (video/audio)
-    pc.getReceivers().forEach(receiver => {
-      try { receiver.track?.stop(); } catch (_) {}
-    });
+    // 6. Remove media elements (if you're generating video elements)
+    const el = document.getElementById(`video-${peerId}`);
+    if (el) el.remove();
 
-    // 4. Close the peer connection
-    try { pc.close(); } catch (_) {}
-
-  } catch (err) {
-    console.warn("Error while cleaning peer:", peerId, err);
+    console.log(`Cleaned up peer: ${peerId}`);
   }
-
-  // 5. Remove from map
-  this.peers.delete(peerId);
-
-  // 6. Remove media elements (if you're generating video elements)
-  const el = document.getElementById(`video-${peerId}`);
-  if (el) el.remove();
-
-  console.log(`Cleaned up peer: ${peerId}`);
-}
 
 }
 
