@@ -7,10 +7,12 @@ import { handleCreate } from "./handlers/handleCreate";
 import { handleJoin } from "./handlers/handleJoin";
 import { handleLeave } from "./handlers/handleLeave";
 import { handleMove } from "./handlers/handleMove";
+import RedisClient from "./RedisInstance";
 
 dotenv.config();
 
 import { verifyToken } from "@shared/jwt";
+import { removeUser } from "./redisHandlers/redisActions";
 
 const httpServer = createServer((req, res) => {
   if (req.method === "GET" && req.url === "/health") {
@@ -18,6 +20,17 @@ const httpServer = createServer((req, res) => {
     res.end("OK");
   }
 });
+
+const setupServer = async () => {
+  await RedisClient.getInstance();
+  console.log("Redis client initialized");
+  
+  httpServer.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+
 
 // Create Socket.IO server with types
 const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
@@ -45,23 +58,23 @@ io.use(async (socket, next) => {
 // Connection handler
 io.on("connection", (socket) => {
   // Room creation
-  socket.on("room:create", (data, callback) => {
+  socket.on("room:create", async (data, callback) => {
     handleCreate(io, socket, data, callback);
   });
 
   // Room join
-  socket.on("room:join", (data, callback) => {
-    handleJoin(io, socket, data, callback);
+  socket.on("room:join", async (data, callback) => {
+    await handleJoin(io, socket, data, callback);
   });
 
   // Player movement
-  socket.on("player:move", (data, callback) => {
-    handleMove(io, socket, data, callback);
+  socket.on("player:move", async (data, callback) => {
+   await handleMove(io, socket, data, callback);
   });
 
   // Room leave
-  socket.on("room:leave", (data) => {
-    handleLeave(io, socket, data);
+  socket.on("room:leave", async (data) => {
+    await handleLeave(io, socket, data);
   });
 
   socket.on("webrtc-signaling", ({ to, data }) => {
@@ -71,11 +84,11 @@ io.on("connection", (socket) => {
   });
 
   // Handle disconnection
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     if (socket.data.user.roomId) {
       const room = RoomManager.getInstance().getRoom(socket.data.user.roomId);
       if (room) {
-        room.removeUser(socket.data.user.userId);
+        await removeUser(room.roomid,socket.data.user.userId);
         // Broadcast to room that player left
         socket.to(socket.data.user.roomId).emit("player:left", {
           playerId: socket.data.user.userId
@@ -86,6 +99,8 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 5002;
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+
+setupServer().catch((err) => {
+  console.error("Server startup failed:", err);
+  process.exit(1);
 });

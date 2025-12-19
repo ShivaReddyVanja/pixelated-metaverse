@@ -1,45 +1,71 @@
 import { Server, Socket } from "socket.io";
 import { RoomManager } from "../RoomManager";
 import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "../types/events";
+import { addUser, getPlayersInRoom } from "../redisHandlers/redisActions";
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
-export function handleJoin(
+export async function handleJoin(
   io: IoServer,
   socket: IoSocket,
   data: Extract<ClientToServerEvents["room:join"], Function> extends (data: infer T, ...args: any[]) => any ? T : never,
   callback?: (response: any) => void
 ) {
-  const userId = socket.data.user.userId;
-  const room = RoomManager.getInstance().getRoom(data.spaceId);
+  try {
+    const userId = socket.data.user.userId;
+    const roomId = data.spaceId;
+    const position = await addUser(roomId, userId, socket.id);
 
-  if (!room) {
-    const error = { event: "join", message: "Room not found" };
-    socket.emit("error", error);
-    callback?.({ status: "error", ...error });
-    return;
+    if (position === -1) {
+      const error = { event: "join", message: "Room Not found" };
+      socket.emit("error", error);
+      callback?.({ status: "error", ...error });
+      return;
+    }
+    else if (position === null) {
+      const error = { event: "join", message: "Room is full" }
+      socket.emit("error", error);
+      callback?.({ status: "error", ...error });
+      return;
+    }
+    else if (position === 0) {
+      const error = { event: "join", message: "Already in the room" };
+      socket.emit("error", error);
+      callback?.({ status: "error", ...error });
+      return;
+    }
+
+
+    const room = RoomManager.getInstance().getRoom(roomId)!;
+
+    // Join Socket.IO room
+    socket.join(data.spaceId);
+    socket.data.user.roomId = data.spaceId; // Track room in socket data
+
+    const result = await getPlayersInRoom(roomId);
+
+    if (result === null) {
+      const error = { event: "join", message: "No room found, while trying to fetch the players" }
+      socket.emit("error", error);
+      callback?.({ status: "error", ...error });
+      return;
+    }
+    //cache the players in the room
+    const players = result;
+
+    // Broadcast to everyone in the room (including sender)
+    io.to(data.spaceId).emit("room:joined", {
+      playerId: userId,
+      players,
+      spawn: position,
+    });
+
+    callback?.({ status: "success", position });
+  } catch (error) {
+    console.error("handleJoin error:", error);
+    const errorMsg = { event: "join", message: "Internal server error" };
+    socket.emit("error", errorMsg);
+    callback?.({ status: "error", ...errorMsg });
   }
-
-  const spawn = room.addUser(userId, socket.id);
-
-  if (!spawn) {
-    const error = { event: "join", message: "Room is full, no empty position found" };
-    socket.emit("error", error);
-    callback?.({ status: "error", ...error });
-    return;
-  }
-
-  // Join Socket.IO room
-  socket.join(data.spaceId);
-
-  const players = Object.fromEntries(room.players);
-  // Broadcast to everyone in the room (including sender)
-  io.to(data.spaceId).emit("room:joined", {
-    playerId: userId,
-    players,
-    spawn,
-  });
-
-  callback?.({ status: "success", spawn });
 }

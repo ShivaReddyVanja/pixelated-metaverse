@@ -1,4 +1,4 @@
-import { Room } from "./Room"
+import Room from "./RedisRoom";
 
 export class RoomManager {
 
@@ -14,12 +14,13 @@ export class RoomManager {
         }
         return this.instance
     }
+
     getRoom(roomId:string){
-        return this.rooms.get(roomId)
-    }
-    
-    setRoom(roomId:string,room:Room){
-        this.rooms.set(roomId,room);
+        if(this.rooms.get(roomId)){
+            return this.rooms.get(roomId);
+        }
+        const newRoom = new Room(roomId);
+        this.rooms.set(roomId,newRoom);
         return this.rooms.get(roomId);
     }
 }

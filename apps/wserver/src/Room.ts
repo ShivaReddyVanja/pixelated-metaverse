@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "./types/events";
+import RedisClient from "./RedisInstance";
 
 interface MapData {
   name: string;
@@ -17,12 +18,13 @@ export class Room {
   height: number;
   gridSize: number;
   creatorId: string;
+  proximityRadius = 3  
+  maxPeerConnections = 10;
+  playerNeighbors: Map<string, Set<string>> = new Map();
   players: Map<string, { x: number; y: number; socketId: string }> = new Map();
   filledPositions: Set<string> = new Set(); //purely used for objects
   filledPlayerPositions: Set<String> = new Set();//purely used for players
-  proximityRadius = 3  // or tiles
-  playerNeighbors: Map<string, Set<string>> = new Map();
-  maxPeerConnections = 10;
+
 
   constructor(data: MapData) {
     this.name = data.name;
