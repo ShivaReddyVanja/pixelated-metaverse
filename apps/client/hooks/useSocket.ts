@@ -4,8 +4,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getMapCollisionData } from '@/utils/getMapData';
 // import { getMapData } from '@/utils/getMapDataObjects';
-import { CreateRoomEvent } from '@/types/events';
-import { handleCreated, handleJoined, handleLeft, handleMoved } from '@/services/socketHandlers';
+import { CreateRoomEvent, PlayerJoined, PlayerLeft, PlayerMoved, RoomCreated, RoomJoined } from '@/types/events';
+import { roomCreated, roomJoined,newPlayerJoined, playerLeft, playerMoved } from '@/services/socketHandlers';
 import { WebRTCManager } from '@/lib/WebRtcManager';
 
 // Define the expected structure for connection info from your API
@@ -26,7 +26,6 @@ export function useSocketIO(connectionInfo: ConnectionInfo) {
 
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-
   const mapData = getMapCollisionData();
   // const mapData = getMapData()
 
@@ -65,38 +64,36 @@ export function useSocketIO(connectionInfo: ConnectionInfo) {
     socket.on('connect', () => {
       console.log("Socket.IO connected successfully!");
       setIsConnected(true);
-
       socket.emit('room:create', roomCreationData);
-     
     });
 
     socket.on('disconnect', (reason) => {
       console.log(`Socket.IO disconnected: ${reason}`);
       setIsConnected(false);
-      // Logic for displaying disconnection or managing state goes here
     });
 
-
-    // When the room is created (for the user who created it)
-    socket.on("room:created", (data: { roomId: string; spawn: { x: number; y: number }, playerId: string }) => {
-      handleCreated(data)
+    // room:created and room:joined are self recieved events
+    socket.on("room:created", (data: RoomCreated) => {
+      roomCreated(data)
+    });
+    
+    socket.on("room:joined", (data: RoomJoined) => {
+      console.log("Room Join data", data)
+      roomJoined(data)
     });
 
-    socket.on("room:joined", (data: { playerId: string; spawn: { x: number; y: number }, players: any }) => {
-      handleJoined(data)
+    //event handlers for all others 
+    socket.on("player:joined", (data: PlayerJoined) => {
+      newPlayerJoined(data)
     });
 
-    // When a player leaves
-    socket.on("player:left", (data: { playerId: string }) => {
-      // e.g., remove player from your map/game state
-      handleLeft(data)
+    socket.on("player:left", (data: PlayerLeft) => {
+      playerLeft(data)
     });
 
-    socket.on(
-      "player:moved",
-      (data: { playerId: string; position: { x: number; y: number } }) => {
-        handleMoved(data);
-      }
+    socket.on("player:moved",(data: PlayerMoved) => {
+      playerMoved(data);
+    }
     );
 
     socket.on("player-near", async ({ playerId, socketId }: { playerId: string, socketId: string }) => {
@@ -109,7 +106,6 @@ export function useSocketIO(connectionInfo: ConnectionInfo) {
 
     socket.on('connect_error', (err) => {
       console.error("Socket.IO Connection Error:", err.message);
-      // Handle UI error display
     });
 
     // 3. Cleanup function: Disconnect the socket when the component unmounts

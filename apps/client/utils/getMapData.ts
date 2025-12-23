@@ -1,4 +1,4 @@
-import megacity from '@/lib/assets/megacity.json';
+import megacity from '@/public/clean.json';
 
 // --- Tiled Map Type Definitions (Using your provided types) ---
 
@@ -51,7 +51,7 @@ interface MapCollisionResult {
 const mapData = megacity as TiledMapData;
 
 // Define the assumed tile size from the Tiled map settings.
-const TILE_SIZE: number = mapData.tilewidth || 32;
+const TILE_SIZE: number = mapData.tilewidth || 16;
 
 /**
  * Converts a tile coordinate (X, Y) into a single-dimensional array index.

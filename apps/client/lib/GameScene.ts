@@ -11,7 +11,7 @@ class GameScene extends Phaser.Scene {
   private localPlayerId!: string;
 
   // Grid & movement
-  private tileSize = 32;
+  private tileSize = 16;
   private isMoving = false; // Used as a throttle
   private localGridPos: { x: number, y: number } | null = null; // Client-side authority
   private map!: Phaser.Tilemaps.Tilemap;
@@ -27,11 +27,11 @@ class GameScene extends Phaser.Scene {
 
   preload() {
     // Load the tilemap JSON
-    this.load.tilemapTiledJSON("map", "/megacity.json");
+    this.load.tilemapTiledJSON("map", "/clean.json");
     // Load tileset images
-    this.load.image("tileset", "/tileset.png");
+    this.load.image("tileset", "/rich-map.png");
     // this.load.image("objects", "/objects.png");
-    this.load.spritesheet("player", "/player2.png", {
+    this.load.spritesheet("player", "/sprite.png", {
       frameWidth: 32,
       frameHeight: 32,
     });
@@ -44,7 +44,7 @@ class GameScene extends Phaser.Scene {
     // Load collision data from the shared utility
     const collisionData = getMapCollisionData();
     this.blockedIndices = new Set(collisionData.blockedTileIndices);
-
+    console.log(this.blockedIndices);
     // load tilesets , first :tileset name(must match with tilemap json), second :image name
     const tileSet = this.map.addTilesetImage("tileset", "tileset")
 
@@ -92,8 +92,6 @@ class GameScene extends Phaser.Scene {
       (state) => state.players,
       (players: PlayersMap) => {
         Object.entries(players).forEach(([id, pos]) => {
-
-
           // Convert grid position to pixel center position
           const targetPx = (pos.x ?? 0) * this.tileSize + this.tileSize / 2;
           const targetPy = (pos.y ?? 0) * this.tileSize + this.tileSize / 2;
@@ -254,6 +252,7 @@ class GameScene extends Phaser.Scene {
     // If a key is pressed, process the move IMMEDIATELY (Optimistic)
     if (targetX !== null && targetY !== null) {
 
+
       // COLLISION CHECK:
       // Don't walk into walls (Objects layer) or other players
       if (!this.isTileWalkable(targetX, targetY) || this.isTileOccupiedByPlayer(targetX, targetY)) {
@@ -324,25 +323,25 @@ class GameScene extends Phaser.Scene {
   private createAnimations() {
     this.anims.create({
       key: "left",
-      frames: this.anims.generateFrameNumbers("player", { start: 0, end: 2 }),
+      frames: this.anims.generateFrameNumbers("player", { start: 8, end: 11 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "right",
-      frames: this.anims.generateFrameNumbers("player", { start: 4, end: 6 }),
+      frames: this.anims.generateFrameNumbers("player", { start: 4, end: 7 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "up",
-      frames: this.anims.generateFrameNumbers("player", { start: 8, end: 10 }),
+      frames: this.anims.generateFrameNumbers("player", { start: 12, end: 15 }),
       frameRate: 10,
       repeat: -1,
     });
     this.anims.create({
       key: "down",
-      frames: this.anims.generateFrameNumbers("player", { start: 12, end: 14 }),
+      frames: this.anims.generateFrameNumbers("player", { start: 0, end: 3 }),
       frameRate: 10,
       repeat: -1,
     });

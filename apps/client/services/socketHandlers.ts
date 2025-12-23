@@ -1,9 +1,9 @@
-import { RoomCreated, RoomJoined, PlayerLeft, PlayerMoved } from '@/types/events';
+import { RoomCreated, RoomJoined, PlayerLeft, PlayerMoved, PlayerJoined } from '@/types/events';
 import { usePlayersStore } from '@/store/playersStore';
 import { gameEmitter } from '@/lib/GameEmitter';
 
-
-export const handleCreated = (data: RoomCreated) => {
+//created and 
+export const roomCreated = (data: RoomCreated) => {
     const { setSpaceId, setPlayerPosition } = usePlayersStore.getState();
     const { roomId, spawn, playerId } = data;
     setSpaceId(roomId);
@@ -11,7 +11,7 @@ export const handleCreated = (data: RoomCreated) => {
     console.log("player created at",playerId,spawn.x,spawn.y)
 }
 
-export const handleJoined = (data: RoomJoined) => {
+export const roomJoined = (data: RoomJoined) => {
     const { setPlayers, setPlayerPosition } = usePlayersStore.getState();
     const { playerId, players, spawn } = data;
     setPlayers(players);
@@ -20,15 +20,22 @@ export const handleJoined = (data: RoomJoined) => {
     console.log("player joined at",playerId,spawn.x,spawn.y)
 }
 
-export const handleMoved = (data: PlayerMoved) => {
+
+export const newPlayerJoined = (data: PlayerJoined) => {
+    const {setPlayerPosition } = usePlayersStore.getState();
+    const { playerId, spawn } = data;
+    setPlayerPosition(playerId, spawn.x, spawn.y);
+    console.log("player",playerId,"spawnned at",spawn.x,spawn.y);
+}
+
+export const playerMoved = (data: PlayerMoved) => {
     const { setPlayerPosition } = usePlayersStore.getState();
     const {playerId,position} = data;
     setPlayerPosition(playerId, position.x, position.y);
-
     gameEmitter.emit("moveProcessed", playerId);
 }
 
-export const handleLeft = (data: PlayerLeft) => {
+export const playerLeft = (data: PlayerLeft) => {
     const { removePlayer } = usePlayersStore.getState();
     const {playerId} = data;
     removePlayer(playerId);
