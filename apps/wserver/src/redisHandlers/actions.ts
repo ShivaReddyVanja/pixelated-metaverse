@@ -2,6 +2,7 @@ import { AddUserResult, RoomData } from "../types"
 import RedisClient from "../RedisInstance"
 import { getAllUsersScript, getMovePlayerScript, getRemoveUserScript, getUserAddScript } from "./luaScripts";
 import { getFreePositions, getObjectsFilledPositions } from "./utils";
+import { RoomManager } from "../RoomManager";
 
 
 type RawLuaResult = number[] | null | 0 | -1;
@@ -18,11 +19,12 @@ export const createRoom = async (roomData: RoomData, userId: string, userSocketI
     //metdata,objects data, free positions
     await redis.hset(`room:${roomData.roomId}`, roomDataAsArray);
     await redis.sadd(`room:${roomData.roomId}:occupiedbyobjects`, objectPositions);
-    await redis.sadd(`room:${roomData.roomId}:freepos`, freePositions);
+    await redis.sadd(`room:${roomData.roomId}:emptypos`, freePositions);
     // Initialize empty players set
     // await redis.sadd(`room:${roomData.roomId}:players`, ["__placeholder__"]);
     // await redis.srem(`room:${roomData.roomId}:players`, ["__placeholder__"]);
   }
+  
   const result = await addUser(roomData.roomId, userId, userSocketId);
 
   return result;
@@ -39,16 +41,19 @@ export const addUser = async (roomId: string, userId: string, userSocketId: stri
     `room:${roomId}:players:${userId}`,     // KEYS[1]
     `room:${roomId}:emptypos`,              // KEYS[2] 
     `room:${roomId}:occupiedbyplayers`,     // KEYS[3]
-    `room:${roomId}:players`                // KEYS[4] - players set
+    `room:${roomId}:players`,               // KEYS[4] - players set
+    `${userSocketId}`                             // KEYS[5] - userSocket - server mapping
   ];
 
   const args = [
     userId,     // ARGV[1]
-    userSocketId // ARGV[2]
+    userSocketId, // ARGV[2]
+    RoomManager.serverId //ARGV[3]
   ];
 
   //result = null when user already exists or already exists
   const result = await redis.invokeScript(addUserScript, { keys, args }) as RawLuaResult;
+  console.log(result)
   if (result === 0) return 0;
   if (result === null) return null;
   if (result === -1) return -1;
@@ -60,7 +65,7 @@ export const addUser = async (roomId: string, userId: string, userSocketId: stri
 
 }
 
-export const removeUser = async (roomId: string, userId: string) => {
+export const removeUser = async (roomId: string, userId: string,userSocketId:string) => {
 
   const redis = await RedisClient.getInstance();
   const removeUserScript = getRemoveUserScript();
@@ -69,7 +74,8 @@ export const removeUser = async (roomId: string, userId: string) => {
     `room:${roomId}:players:${userId}`,      // KEYS[1] - player hash
     `room:${roomId}:emptypos`,               // KEYS[2] - empty positions set
     `room:${roomId}:occupiedbyplayers`,      // KEYS[3] - occupied positions set
-    `room:${roomId}:players`                 // KEYS[4] - players set
+    `room:${roomId}:players`,                // KEYS[4] - players set
+    `${userSocketId}`                              // KEYS[5] - user : server mapping
   ];
 
   const args = [
@@ -84,7 +90,7 @@ export const removeUser = async (roomId: string, userId: string) => {
 
     if (playerCount === 0) {
       // Room is empty, clean up all room data
-      await redis.del([
+      await redis.del([ 
         `room:${roomId}`,                       // Room metadata
         `room:${roomId}:players`,               // Players set
         `room:${roomId}:emptypos`,              // Empty positions
@@ -108,14 +114,18 @@ export const checkIfRoomExists = async (roomId: string) => {
   return true;
 }
 
-type PlayerState = {
+
+
+export type LuaFlatHash = string[];
+export type LuaPlayersResult = Array<
+  string | LuaFlatHash
+>;
+export type Player = {
+  id: string;
   x: number;
   y: number;
   socketId: string;
 };
-
-type PlayersObject = Record<string, PlayerState>;
-
 export const getPlayersInRoom = async (roomId: string) => {
   const redis = await RedisClient.getInstance();
   const script = getAllUsersScript();
@@ -125,8 +135,28 @@ export const getPlayersInRoom = async (roomId: string) => {
   const args = [
     roomId
   ]
-  const result = await redis.invokeScript(script, { keys, args }) as PlayersObject | null;
-  return result
+  const result = await redis.invokeScript(script, { keys, args }) as LuaPlayersResult | null;
+
+  const  decoded: Record<string, Player> = {};
+  if (result != null) {
+
+    for (let i = 0; i < result.length; i += 2) {
+      const userId = result[i] as string;
+      const flat = result[i + 1];
+
+      const player: Record<string, string|number> = {};
+      for (let j = 0; j < flat.length; j += 2) {
+        if (flat[j] === "x" || flat[j] === "y") {
+          player[flat[j]] = Number(flat[j + 1]);
+        } else {
+          player[flat[j]] = flat[j + 1];
+        }
+      }
+
+      decoded[userId] = player as Player;
+    }
+  }
+  return decoded;
 }
 
 
@@ -148,9 +178,21 @@ export const moveUser = async (roomId: string, userId: string, newX: number, new
     newX.toString(),
     newY.toString()
   ]
-  const result = await redis.invokeScript(script, { keys, args }) as moveUserResult;
+  let result = await redis.invokeScript(script, { keys, args }) as moveUserResult;
+  
+  if (Array.isArray(result)) {
+  const [moved, x, y] = result;
+  const pos: position = { moved, x, y }; // if you still want an object
+  result = pos;
+}
   //0 means players doesnt exist or positions doesnt exist
   //-1 room doesnt exist
   // {0,x,y} when move is not valid, {1,x,y} when move is valid
   return result;
+}
+
+export const getPlayerServerId = async (socketId:string)=>{
+  const redis = await RedisClient.getInstance();
+  const serverId = await redis.get(socketId);
+  return serverId as string | null;
 }

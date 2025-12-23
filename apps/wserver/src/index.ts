@@ -12,7 +12,8 @@ import RedisClient from "./RedisInstance";
 dotenv.config();
 
 import { verifyToken } from "@shared/jwt";
-import { removeUser } from "./redisHandlers/redisActions";
+import { getPlayerServerId, removeUser } from "./redisHandlers/actions";
+import { publishEvent, publishSignallingEvents } from "./redisHandlers/publisherRedis";
 
 const httpServer = createServer((req, res) => {
   if (req.method === "GET" && req.url === "/health") {
@@ -24,7 +25,7 @@ const httpServer = createServer((req, res) => {
 const setupServer = async () => {
   await RedisClient.getInstance();
   console.log("Redis client initialized");
-  
+
   httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
@@ -33,7 +34,7 @@ const setupServer = async () => {
 
 
 // Create Socket.IO server with types
-const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
+export const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
@@ -69,7 +70,7 @@ io.on("connection", (socket) => {
 
   // Player movement
   socket.on("player:move", async (data, callback) => {
-   await handleMove(io, socket, data, callback);
+    await handleMove(io, socket, data, callback);
   });
 
   // Room leave
@@ -77,21 +78,30 @@ io.on("connection", (socket) => {
     await handleLeave(io, socket, data);
   });
 
-  socket.on("webrtc-signaling", ({ to, data }) => {
+  socket.on("webrtc-signaling", async ({ to, data }) => {
     if (!to) return;
-    // Attach sender id so recipient knows who it's from
-    io.to(to).emit("webrtc-signaling", { from: socket.id, data });
+    const serverId = await getPlayerServerId(to);
+    if(serverId){
+      const from = socket.id;
+      await publishSignallingEvents(serverId, {to,from,data});
+      console.log("publisheing the signal");
+    }
+    console.log("Ignoring the webrtc signal server records not found for recipient")
   });
 
   // Handle disconnection
   socket.on("disconnect", async () => {
     if (socket.data.user.roomId) {
-      const room = RoomManager.getInstance().getRoom(socket.data.user.roomId);
+      const roomId = socket.data.user.roomId;
+      const userId = socket.data.user.userId;
+      const room = RoomManager.getInstance().getRoom(roomId);
+
       if (room) {
-        await removeUser(room.roomid,socket.data.user.userId);
-        // Broadcast to room that player left
-        socket.to(socket.data.user.roomId).emit("player:left", {
-          playerId: socket.data.user.userId
+        await removeUser(room.roomid, userId,socket.id);
+        // Use pub/sub pattern to notify all servers
+        await publishEvent(roomId, {
+          type: "leave" as const,
+          userId
         });
       }
     }
@@ -100,7 +110,13 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 5002;
 
+// Only start server if not running in test environment
+// if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
 setupServer().catch((err) => {
   console.error("Server startup failed:", err);
   process.exit(1);
 });
+// }
+
+// // Export for testing
+// export { setupServer };

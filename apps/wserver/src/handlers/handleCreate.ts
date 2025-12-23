@@ -1,7 +1,7 @@
 import { Server, Socket } from "socket.io";
 import { RoomManager } from "../RoomManager";
 import Room from "../RedisRoom";
-import { addUser, checkIfRoomExists, createRoom } from "../redisHandlers/redisActions";
+import { addUser, checkIfRoomExists, createRoom } from "../redisHandlers/actions";
 import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "../types/events";
 import { handleJoin } from "./handleJoin";
 
@@ -54,7 +54,13 @@ export async function handleCreate(
     // Join the Socket.IO room (automatic room management!)
     socket.join(data.spaceId);
     socket.data.user.roomId = data.spaceId; // Track room in socket data
-    room.addSocket(userId, socket.id);
+    //add the player to local room instance for proximity calculations
+    room.addPlayer({ 
+      id:userId,
+      x:result.x, 
+      y:result.y, 
+      socketId:socket.id
+    });
 
     const response = {
       status: "success",

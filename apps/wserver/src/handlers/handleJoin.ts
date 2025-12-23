@@ -1,7 +1,9 @@
 import { Server, Socket } from "socket.io";
 import { RoomManager } from "../RoomManager";
 import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "../types/events";
-import { addUser, getPlayersInRoom } from "../redisHandlers/redisActions";
+import { addUser, getPlayersInRoom } from "../redisHandlers/actions";
+import { publishEvent } from "../redisHandlers/publisherRedis";
+import { RoomJoined } from "@myapp/types";
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -32,10 +34,11 @@ export async function handleJoin(
     else if (position === 0) {
       const error = { event: "join", message: "Already in the room" };
       socket.emit("error", error);
+      socket.join(data.spaceId);
+      socket.data.user.roomId = data.spaceId;
       callback?.({ status: "error", ...error });
       return;
     }
-
 
     const room = RoomManager.getInstance().getRoom(roomId)!;
 
@@ -51,15 +54,20 @@ export async function handleJoin(
       callback?.({ status: "error", ...error });
       return;
     }
+
+    const payload = { type: "join" as const, userId, position,socketId:socket.id};
+    await publishEvent(roomId, payload);
+
     //cache the players in the room
     const players = result;
-
-    // Broadcast to everyone in the room (including sender)
-    io.to(data.spaceId).emit("room:joined", {
+    // // Broadcast to everyone in the room (including sender)
+    socket.emit("room:joined", {
       playerId: userId,
       players,
       spawn: position,
     });
+    // console.log('PLAYERS DATA',players);
+    
 
     callback?.({ status: "success", position });
   } catch (error) {

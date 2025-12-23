@@ -154,8 +154,11 @@ export class WebRTCManager {
 
     this.socket.emit("webrtc-signaling", {
       to: peerData.socketId,
-      data: { offer: pc.localDescription },
+      data: {
+         offer: pc.localDescription
+         },
     });
+    
   }
 
   closePeer(peerSocketId: string) {

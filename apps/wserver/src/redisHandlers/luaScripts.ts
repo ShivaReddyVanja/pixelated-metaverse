@@ -42,10 +42,12 @@ export const getUserAddScript = () => {
 -- 2 = room:{roomId}:emptypos
 -- 3 = room:{roomId}:occupiedbyplayers
 -- 4 = room:{roomId}:players
+-- 5 = {userId}
 
 -- ARGV
 -- 1 = userId
 -- 2 = socketId
+-- 3 = serverId
 
 -- we use emptypos as the room existence marker
 if redis.call("EXISTS", KEYS[2]) == 0 then
@@ -78,11 +80,14 @@ redis.call(
   "id", ARGV[1],
   "x", x,
   "y", y,
-  "socket", ARGV[2]
+  "socketId", ARGV[2]
 )
 
 -- add user to players set
 redis.call("SADD", KEYS[4], ARGV[1])
+
+-- add a mapping of player to server
+redis.call("SET", KEYS[5], ARGV[3])
 
 -- return assigned position
 return { x, y }
@@ -98,6 +103,7 @@ export const getRemoveUserScript = () => {
 -- 2 = room:{roomId}:emptypos
 -- 3 = room:{roomId}:occupiedbyplayers
 -- 4 = room:{roomId}:players
+-- 5 = {userId}
 
 -- ARGV
 -- 1 = userId
@@ -127,6 +133,9 @@ redis.call("SREM", KEYS[4], userId)
 -- Delete user hash completely
 redis.call("DEL", KEYS[1])
 
+-- Remove user:server map 
+redis.call('DEL', KEYS[5])
+
 -- Return freed position
 return 1
 `;
@@ -138,14 +147,13 @@ export const getAllUsersScript = () => {
 
   const getAllUsers = `
 -- KEYS
--- 1 = room:{roomId}:players
+-- 1 = room:{roomId}:players (SET of userIds)
 
 -- ARGV
 -- 1 = roomId
 
--- check if room exists (players set exists)
 if redis.call("EXISTS", KEYS[1]) == 0 then
-  return nil
+  return {}
 end
 
 local playerIds = redis.call("SMEMBERS", KEYS[1])
@@ -156,12 +164,8 @@ for _, userId in ipairs(playerIds) do
   local playerData = redis.call("HGETALL", playerKey)
 
   if #playerData > 0 then
-    -- Convert flat array from HGETALL to proper object
-    local player = {}
-    for i = 1, #playerData, 2 do
-      player[playerData[i]] = playerData[i + 1]
-    end
-    result[userId] = player
+    table.insert(result, userId)
+    table.insert(result, playerData)
   end
 end
 

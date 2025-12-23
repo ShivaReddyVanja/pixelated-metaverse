@@ -118,7 +118,7 @@ export class Room {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  updatePlayerProximity(io: Server, userId: string) {
+  updatePlayerProximity(userId: string) {
     const myPos = this.players.get(userId);
     if (!myPos) return;
 

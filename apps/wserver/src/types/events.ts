@@ -1,6 +1,6 @@
 import {JwtTokenPayload} from "@myapp/types"
-type PlayerPosition = { x: number; y: number };
-type PlayersMap = Record<string, PlayerPosition>;
+type Player = { id:string, x: number; y: number ,socketId:string};
+type PlayersMap = Record<string, Player>;
 
 export interface ServerToClientEvents {
   "webrtc-signaling": (data: {

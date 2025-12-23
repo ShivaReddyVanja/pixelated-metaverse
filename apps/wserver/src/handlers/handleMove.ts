@@ -1,7 +1,8 @@
 import { Server, Socket } from "socket.io";
 import { RoomManager } from "../RoomManager";
 import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "../types/events";
-import { moveUser } from "../redisHandlers/redisActions";
+import { moveUser } from "../redisHandlers/actions";
+import { publishEvent } from "../redisHandlers/publisherRedis";
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -47,12 +48,13 @@ export async function handleMove(
     }
 
     // room.updatePlayerProximity(io, userId);
-
+    const payload = { type: "move" as const, userId, position: { x: result.x, y: result.y } };
+    await publishEvent(roomId, payload);
     // Broadcast to everyone in the room (only when move was successful)
-    io.in(roomId).emit("player:moved", {
-      playerId: userId,
-      position: { x: result.x, y: result.y }
-    });
+    // io.in(roomId).emit("player:moved", {
+    //   playerId: userId,
+    //   position: { x: result.x, y: result.y }
+    // });
 
     callback?.({ status: "success", position: { x: result.x, y: result.y } });
   } catch (error) {

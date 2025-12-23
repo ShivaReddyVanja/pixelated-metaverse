@@ -1,7 +1,8 @@
 import { Server, Socket } from "socket.io";
 import { RoomManager } from "../RoomManager";
 import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "../types/events";
-import { removeUser } from "../redisHandlers/redisActions";
+import { removeUser } from "../redisHandlers/actions";
+import { publishEvent } from "../redisHandlers/publisherRedis";
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -14,7 +15,7 @@ export async function handleLeave(
   try {
     const userId = socket.data.user.userId;
     const roomId = data.spaceId;
-    const result = await removeUser(roomId, userId);
+    const result = await removeUser(roomId, userId,socket.id);
 
     if (result === null) {
       socket.emit("error", { event: "leave", message: "Room not found" });
@@ -27,11 +28,13 @@ export async function handleLeave(
       // Leave Socket.IO room
       socket.leave(roomId);
       socket.data.user.roomId = "";
+      const payload = { type: "leave" as const, userId }
+      await publishEvent(roomId, payload);
 
       // Broadcast to remaining users
-      socket.to(data.spaceId).emit("player:left", {
-        playerId: userId
-      });
+      // socket.to(data.spaceId).emit("player:left", {
+      //   playerId: userId
+      // });
     }
   } catch (error) {
     console.error("handleLeave error:", error);
