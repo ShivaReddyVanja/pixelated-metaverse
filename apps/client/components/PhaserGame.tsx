@@ -1,3 +1,4 @@
+"use client"
 import React, { useEffect, useRef } from 'react';
 import * as Phaser from 'phaser';
 import GameScene from '@/lib/GameScene';

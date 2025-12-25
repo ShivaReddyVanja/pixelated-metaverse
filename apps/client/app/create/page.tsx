@@ -1,6 +1,7 @@
 "use client"
 import { api } from '@/services/api';
 import { SocketConnectionData } from '@/types';
+import axios from 'axios';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
@@ -41,8 +42,14 @@ export default function CreateRoomPage() {
      router.push(`/meet?id=${data.roomId}`)
 
     }
-    catch(e:any){
-       console.error(e.message)
+    catch (e: unknown) {
+      if (axios.isAxiosError(e)) {
+        console.error(e.response?.data?.message ?? e.message);
+      } else if (e instanceof Error) {
+        console.error(e.message);
+      } else {
+        console.error(e);
+      }
     }
     
   };

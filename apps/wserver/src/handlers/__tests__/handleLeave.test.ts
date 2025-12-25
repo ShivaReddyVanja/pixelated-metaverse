@@ -4,8 +4,8 @@ import { publishEvent } from '../../redisHandlers/publisherRedis';
 import { createMockIo, createMockSocket } from '../../__tests__/utils/testHelpers';
 
 // Mock dependencies
-jest.mock('../../redisHandlers/redisActions');
-jest.mock('../../redisHandlers/redisPublisher');
+jest.mock('../../redisHandlers/actions');
+jest.mock('../../redisHandlers/publisherRedis');
 
 describe('handleLeave', () => {
     let mockIo: any;

@@ -6,7 +6,7 @@ type createRoomStore = {
 }
 type joinRoomStore = {
     room:string|null,
-    setRoom:(room:string)
+    setRoom:(room:string)=>void
 }
 
 export const createRoomStore =create<createRoomStore> ((set)=>({

@@ -13,7 +13,7 @@ interface GameSceneProps {
   height?: number;
 }
 
-const Game: React.FC<GameSceneProps> = () => {
+const Game = () => {
   
   const gameRef = useRef<HTMLDivElement>(null);
   const game = useRef<Phaser.Game | null>(null);
@@ -25,7 +25,7 @@ const Game: React.FC<GameSceneProps> = () => {
   const { isConnected, socketRef } = useSocketIO(saved);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && gameRef.current && !game.current) {
+    if (typeof window !== 'undefined' && gameRef.current && !game.current && socketRef.current) {
       const config: Phaser.Types.Core.GameConfig = {
         type: Phaser.AUTO,
         width: window.innerWidth,
@@ -51,9 +51,12 @@ const Game: React.FC<GameSceneProps> = () => {
 
       game.current = new Phaser.Game(config);
       // Add the scene instance with constructor parameters
-      //@ts-ignore
+      
       const gameScene = new GameScene(socketRef.current, saved.userId);
       game.current.scene.add('GameScene', gameScene, true);
+    }
+    else{
+      console.log("one these might be the issue:",typeof window , gameRef.current , !game.current ,socketRef.current);
     }
     return () => {
       game.current?.destroy(true);

@@ -147,7 +147,13 @@ export const getMapCollisionData = (): MapCollisionResult => {
         }
         // Handle Polylines and Polygons
         else if (obj.polyline || obj.polygon) {
-            const points: TiledPoint[] = obj.polyline || obj.polygon;
+            let valid :TiledPoint[] =[]
+            if(obj.polygon){
+                valid =obj.polygon
+            }else if (obj.polyline){
+                valid = obj.polyline
+            }
+            const points: TiledPoint[] = valid
             
             // Calculate the actual bounding box based on all relative points
             points.forEach((point: TiledPoint) => {

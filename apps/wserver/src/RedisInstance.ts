@@ -32,7 +32,7 @@ class RedisClient {
         
                         const signalHandler = (msg:string)=>{
                             const payload = JSON.parse(msg) as PublishSignallingEvent;
-                            io.to(payload.to).emit("webrtc-signaling", { from:payload.from, data });
+                            io.to(payload.to).emit("webrtc-signaling", { from:payload.from, data:payload.data });
                         }
 
                         const channelName = msg.channel as string;

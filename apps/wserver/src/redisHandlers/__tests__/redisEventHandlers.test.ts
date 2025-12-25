@@ -1,10 +1,10 @@
 import { Server } from 'socket.io';
-import { handlers } from '../eventHandlers.ts';
-import { getPlayersInRoom } from '../actions.js';
+import { handlers } from '../eventHandlers';
+import { getPlayersInRoom } from '../actions';
 import { createMockIo } from '../../__tests__/utils/testHelpers';
 
-// Mock redisActions
-jest.mock('../redisActions');
+// Mock actions
+jest.mock('../actions');
 
 describe('Redis Event Handlers', () => {
     let mockIo: Partial<Server>;
@@ -34,7 +34,7 @@ describe('Redis Event Handlers', () => {
 
             (getPlayersInRoom as jest.Mock).mockResolvedValue(mockPlayers);
 
-            await handlers.join(mockIo as Server, roomId, { type: 'join', userId, position });
+            await handlers.join(mockIo as Server, roomId, { type: 'join', userId, position, socketId: 'socket1' });
 
             expect(mockIo.to).toHaveBeenCalledWith(roomId);
             expect(mockToEmit).toHaveBeenCalledWith('room:joined', {
@@ -51,7 +51,7 @@ describe('Redis Event Handlers', () => {
 
             (getPlayersInRoom as jest.Mock).mockResolvedValue({});
 
-            await handlers.join(mockIo as Server, roomId, { type: 'join', userId, position });
+            await handlers.join(mockIo as Server, roomId, { type: 'join', userId, position, socketId: 'socket3' });
 
             expect(getPlayersInRoom).toHaveBeenCalledWith(roomId);
         });
@@ -121,6 +121,7 @@ describe('Redis Event Handlers', () => {
                 type: 'join' as const,
                 userId: 'user1',
                 position: { x: 5, y: 5 },
+                socketId: 'socket1',
             };
 
             (getPlayersInRoom as jest.Mock).mockResolvedValue({});

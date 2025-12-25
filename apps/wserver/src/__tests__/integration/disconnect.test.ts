@@ -4,8 +4,8 @@ import { RoomManager } from '../../RoomManager';
 import { createMockIo, createMockSocket } from '../utils/testHelpers';
 
 // Mock dependencies
-jest.mock('../../redisHandlers/redisActions');
-jest.mock('../../redisHandlers/redisPublisher');
+jest.mock('../../redisHandlers/actions');
+jest.mock('../../redisHandlers/publisherRedis');
 jest.mock('../../RoomManager');
 
 describe('Disconnect Handler', () => {
@@ -49,14 +49,14 @@ describe('Disconnect Handler', () => {
         const room = RoomManager.getInstance().getRoom(roomId);
 
         if (room) {
-            await removeUser(room.roomid, userId);
+            await removeUser(room.roomid, userId, mockSocket.id);
             await publishEvent(roomId, {
                 type: 'leave' as const,
                 userId,
             });
         }
 
-        expect(removeUser).toHaveBeenCalledWith('test-room', 'test-user');
+        expect(removeUser).toHaveBeenCalledWith('test-room', 'test-user', mockSocket.id);
     });
 
     it('should publish leave event via pub/sub on disconnect', async () => {
@@ -67,7 +67,7 @@ describe('Disconnect Handler', () => {
         const room = RoomManager.getInstance().getRoom(roomId);
 
         if (room) {
-            await removeUser(room.roomid, userId);
+            await removeUser(room.roomid, userId, mockSocket.id);
             await publishEvent(roomId, {
                 type: 'leave' as const,
                 userId,
@@ -116,7 +116,7 @@ describe('Disconnect Handler', () => {
         const room = RoomManager.getInstance().getRoom(roomId);
 
         if (room) {
-            await removeUser(room.roomid, userId);
+            await removeUser(room.roomid, userId, mockSocket.id);
             await publishEvent(roomId, {
                 type: 'leave' as const,
                 userId,
@@ -134,7 +134,7 @@ describe('Disconnect Handler', () => {
 
     it('should clean up room if last player disconnects', async () => {
         // When removeUser returns true and there are no players left,
-        // the Redis keys should be cleaned up (tested in redisActions.test.ts)
+        // the Redis keys should be cleaned up (tested in actions.test.ts)
         (removeUser as jest.Mock).mockResolvedValue(true);
 
         const roomId = mockSocket.data.user.roomId;
@@ -142,7 +142,7 @@ describe('Disconnect Handler', () => {
         const room = RoomManager.getInstance().getRoom(roomId);
 
         if (room) {
-            await removeUser(room.roomid, userId);
+            await removeUser(room.roomid, userId, mockSocket.id);
         }
 
         expect(removeUser).toHaveBeenCalled();

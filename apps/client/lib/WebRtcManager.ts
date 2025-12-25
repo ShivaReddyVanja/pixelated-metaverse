@@ -187,7 +187,7 @@ export class WebRTCManager {
       audio = document.createElement("audio");
       audio.id = `audio-${peerSocketId}`;
       audio.autoplay = true;
-      audio.playsInline = true;
+      audio.setAttribute("playsinline", "true");
       document.body.appendChild(audio);
     }
 

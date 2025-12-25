@@ -1,6 +1,7 @@
 "use client"
 import { api } from '@/services/api';
 import { SocketConnectionData } from '@/types';
+import axios from 'axios';
 import Link from 'next/link';
 // We need to import useSearchParams alongside useRouter for query param access
 import { useRouter, useSearchParams } from 'next/navigation'; 
@@ -57,9 +58,14 @@ export default function JoinRoomPage() {
       router.push(`/meet?id=${roomId}`);
 
     }
-    catch(e:any){
-       // Log the error message from the API or fetch operation
-       console.error("Failed to join room:", e.message);
+     catch (e: unknown) {
+      if (axios.isAxiosError(e)) {
+        console.error(e.response?.data?.message ?? e.message);
+      } else if (e instanceof Error) {
+        console.error(e.message);
+      } else {
+        console.error(e);
+      }
     }
   };
 

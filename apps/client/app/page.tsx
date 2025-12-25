@@ -53,7 +53,7 @@ export default function LandingPage() {
         {/* Features Section */}
         <section className="py-20 lg:py-32">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold">Why You'll Love It</h2>
+            <h2 className="text-3xl md:text-4xl font-bold">Why You&apos;ll Love It</h2>
             <p className="text-slate-400 mt-2">A new dimension of virtual interaction.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
@@ -63,7 +63,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-semibold mb-2">Customizable Spaces</h3>
               <p className="text-slate-400">
-                Design your own office, lounge, or conference hall. Express your team's culture in every pixel.
+                Design your own office, lounge, or conference hall. Express your team&apos;s culture in every pixel.
               </p>
             </div>
             <div className="bg-slate-800 p-8 rounded-xl border border-slate-700">

@@ -14,5 +14,5 @@ export const publishSignallingEvents = async (serverId:string, data:PublishSigna
     const payload = JSON.stringify(data);
     const channelKey = `server:${serverId}`;
     await redis.publish(payload,channelKey);
-    console.log("published proximity",payload);
+    console.log("published proximity",payload.slice(40));
 }

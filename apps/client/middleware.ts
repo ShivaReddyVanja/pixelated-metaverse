@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export function middleware(req) {
+export function middleware(req:NextRequest) {
   const ua = req.headers.get("user-agent") || "";
   const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
 

@@ -4,7 +4,7 @@ import { RoomManager } from '../../RoomManager';
 import { createMockIo, createMockSocket, createMockCallback, createTestRoomData } from '../../__tests__/utils/testHelpers';
 
 // Mock dependencies
-jest.mock('../../redisHandlers/redisActions');
+jest.mock('../../redisHandlers/actions');
 jest.mock('../../RoomManager');
 
 describe('handleCreate', () => {

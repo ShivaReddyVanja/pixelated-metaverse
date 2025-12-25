@@ -1,6 +1,7 @@
 import { Server, Socket } from "socket.io";
 import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "./types/events";
 import RedisClient from "./RedisInstance";
+import { io } from ".";
 
 interface MapData {
   name: string;
@@ -18,7 +19,7 @@ export class Room {
   height: number;
   gridSize: number;
   creatorId: string;
-  proximityRadius = 3  
+  proximityRadius = 3
   maxPeerConnections = 10;
   playerNeighbors: Map<string, Set<string>> = new Map();
   players: Map<string, { x: number; y: number; socketId: string }> = new Map();
@@ -124,7 +125,7 @@ export class Room {
 
     const oldSet = this.playerNeighbors.get(userId) || new Set();
     let newSet = new Set<string>();
-    
+
     // compute nearby players
     const nearby: { id: string; dist: number }[] = [];
     for (const [otherId, pos] of this.players.entries()) {
@@ -144,8 +145,8 @@ export class Room {
       if (!oldSet.has(id)) {
         const targetPlayer = this.players.get(id);
         if (targetPlayer) {
-          io.to(myPos.socketId).emit("player-near", { playerId:id, socketId:targetPlayer.socketId}); // tell X  that other player is near
-          io.to(targetPlayer.socketId).emit("player-near", { playerId:userId, socketId:myPos.socketId}); // tell the other player that X is near
+          io.to(myPos.socketId).emit("player-near", { playerId: id, socketId: targetPlayer.socketId }); // tell X  that other player is near
+          io.to(targetPlayer.socketId).emit("player-near", { playerId: userId, socketId: myPos.socketId }); // tell the other player that X is near
         }
       }
     }
@@ -156,8 +157,8 @@ export class Room {
         console.log("newly nearby player", id)
         const targetPlayer = this.players.get(id);
         if (targetPlayer) {
-          io.to(myPos.socketId).emit("player-far", { playerId:id, socketId:targetPlayer.socketId});
-          io.to(targetPlayer.socketId).emit("player-far", { playerId:userId, socketId:myPos.socketId});
+          io.to(myPos.socketId).emit("player-far", { playerId: id, socketId: targetPlayer.socketId });
+          io.to(targetPlayer.socketId).emit("player-far", { playerId: userId, socketId: myPos.socketId });
         }
       }
     }

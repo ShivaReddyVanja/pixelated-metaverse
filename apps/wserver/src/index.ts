@@ -81,12 +81,12 @@ io.on("connection", (socket) => {
   socket.on("webrtc-signaling", async ({ to, data }) => {
     if (!to) return;
     const serverId = await getPlayerServerId(to);
-    if(serverId){
+    if (serverId) {
       const from = socket.id;
-      await publishSignallingEvents(serverId, {to,from,data});
+      await publishSignallingEvents(serverId, { to, from, data });
       console.log("publisheing the signal");
     }
-    console.log("Ignoring the webrtc signal server records not found for recipient")
+    console.log("Ignoring the webrtc signal server records not found for recipient", to, socket.id)
   });
 
   // Handle disconnection
@@ -97,7 +97,7 @@ io.on("connection", (socket) => {
       const room = RoomManager.getInstance().getRoom(roomId);
 
       if (room) {
-        await removeUser(room.roomid, userId,socket.id);
+        await removeUser(room.roomid, userId, socket.id);
         // Use pub/sub pattern to notify all servers
         await publishEvent(roomId, {
           type: "leave" as const,
@@ -111,12 +111,12 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 5002;
 
 // Only start server if not running in test environment
-// if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
-setupServer().catch((err) => {
-  console.error("Server startup failed:", err);
-  process.exit(1);
-});
-// }
+if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
+  setupServer().catch((err) => {
+    console.error("Server startup failed:", err);
+    process.exit(1);
+  });
+}
 
 // // Export for testing
 // export { setupServer };

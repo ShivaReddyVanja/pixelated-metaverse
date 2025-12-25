@@ -1,5 +1,5 @@
-import {JwtTokenPayload} from "@myapp/types"
-type Player = { id:string, x: number; y: number ,socketId:string};
+import { JwtTokenPayload } from "@myapp/types"
+type Player = { id: string, x: number; y: number, socketId: string };
 type PlayersMap = Record<string, Player>;
 
 export interface ServerToClientEvents {
@@ -9,24 +9,34 @@ export interface ServerToClientEvents {
   }) => void;
 
   "room:created": (data: {
-     playerId:string;
-     roomId: string; 
-     spawn: { x: number; y: number } 
-    }) => void;
+    playerId: string;
+    roomId: string;
+    spawn: { x: number; y: number }
+  }) => void;
 
-  "room:joined": (data: { 
+  "room:joined": (data: {
     playerId: string;
     players: PlayersMap
     spawn: { x: number; y: number }
-   }) => void;
+  }) => void;
 
-  "player:moved": (data: { 
+  "player:moved": (data: {
     playerId: string;
     position: { x: number; y: number }
-    }) => void;
+  }) => void;
 
-  "player:left": (data: { 
-    playerId: string 
+  "player:left": (data: {
+    playerId: string
+  }) => void;
+
+  "player-near": (data: {
+    playerId: string;
+    socketId: string;
+  }) => void;
+
+  "player-far": (data: {
+    playerId: string;
+    socketId: string;
   }) => void;
 
   "error": (data: { event: string; message: string }) => void;
@@ -45,22 +55,22 @@ export interface ClientToServerEvents {
     spaceId: string;
     objectsArray: number[];
   }, callback?: (response: any) => void) => void;
-  
+
   "room:join": (data: {
     token: string;
     spaceId: string;
   }, callback?: (response: any) => void) => void;
-  
+
   "room:leave": (data: {
     token: string;
     spaceId: string;
   }) => void;
-  
+
   "player:move": (data: {
-    playerId:string,
-    position:{
-      x:number,
-      y:number
+    playerId: string,
+    position: {
+      x: number,
+      y: number
     }
   }, callback?: (response: any) => void) => void;
 }

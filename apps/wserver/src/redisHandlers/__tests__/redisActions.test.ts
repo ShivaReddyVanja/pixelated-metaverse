@@ -141,7 +141,7 @@ describe('Redis Actions', () => {
             mockRedis.invokeScript = jest.fn().mockResolvedValue(1);
             mockRedis.scard = jest.fn().mockResolvedValue(1); // room still has players
 
-            const result = await removeUser(roomId, userId);
+            const result = await removeUser(roomId, userId, 'socket1');
 
             expect(result).toBe(true);
             expect(mockRedis.invokeScript).toHaveBeenCalledWith(
@@ -152,7 +152,7 @@ describe('Redis Actions', () => {
                         `room:${roomId}:emptypos`,
                         `room:${roomId}:occupiedbyplayers`,
                         `room:${roomId}:players`,
-                        `${userId}`, // KEYS[5] - user-server mapping
+                        `socket1`, // KEYS[5] - user-server mapping
                     ]),
                     args: [userId],
                 })
@@ -167,7 +167,7 @@ describe('Redis Actions', () => {
             mockRedis.scard = jest.fn().mockResolvedValue(0); // no players left
             const deleteSpy = jest.spyOn(mockRedis, 'del');
 
-            const result = await removeUser(roomId, userId);
+            const result = await removeUser(roomId, userId, 'socket1');
 
             expect(result).toBe(true);
             expect(deleteSpy).toHaveBeenCalledWith(
@@ -188,7 +188,7 @@ describe('Redis Actions', () => {
 
             mockRedis.invokeScript = jest.fn().mockResolvedValue(null);
 
-            const result = await removeUser(roomId, userId);
+            const result = await removeUser(roomId, userId, 'socket1');
             expect(result).toBeNull();
         });
     });

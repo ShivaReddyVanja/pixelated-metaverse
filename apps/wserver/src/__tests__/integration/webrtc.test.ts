@@ -2,8 +2,8 @@ import { Server } from 'socket.io';
 import { createMockIo, createMockSocket } from '../utils/testHelpers';
 
 // Mock dependencies
-jest.mock('../../redisHandlers/redisActions');
-jest.mock('../../redisHandlers/redisPublisher');
+jest.mock('../../redisHandlers/actions');
+jest.mock('../../redisHandlers/publisherRedis');
 jest.mock('../../RoomManager');
 
 describe('WebRTC Signaling', () => {
