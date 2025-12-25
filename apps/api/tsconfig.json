@@ -1,17 +1,13 @@
 {
   "compilerOptions": {
-   
     "target": "es2016",
-    "paths": {
-      "@myapp/types": ["../../packages/types"]
-    },
     /* Modules */
-    "module": "commonjs",                               
-    "rootDir": "../..",                              
-    "outDir": "./dist",                                  
-    "esModuleInterop": true,                                               
-    "forceConsistentCasingInFileNames": true,           
-    "strict": true,                                   
-    "skipLibCheck": true                             
+    "module": "commonjs",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true
   },
 }
