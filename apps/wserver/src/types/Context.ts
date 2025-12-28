@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import { Room } from "../Room";
+import Room from "../Room";
 
 export interface Context {
   ws: WebSocket;

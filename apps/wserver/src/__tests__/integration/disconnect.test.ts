@@ -53,6 +53,7 @@ describe('Disconnect Handler', () => {
             await publishEvent(roomId, {
                 type: 'leave' as const,
                 userId,
+                socketId: mockSocket.id,
             });
         }
 
@@ -71,6 +72,7 @@ describe('Disconnect Handler', () => {
             await publishEvent(roomId, {
                 type: 'leave' as const,
                 userId,
+                socketId: mockSocket.id,
             });
         }
 
@@ -120,6 +122,7 @@ describe('Disconnect Handler', () => {
             await publishEvent(roomId, {
                 type: 'leave' as const,
                 userId,
+                socketId: mockSocket.id,
             });
         }
 

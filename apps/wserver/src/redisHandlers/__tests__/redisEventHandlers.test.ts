@@ -94,7 +94,7 @@ describe('Redis Event Handlers', () => {
             const roomId = 'room1';
             const userId = 'user1';
 
-            await handlers.leave(mockIo as Server, roomId, { type: 'leave', userId });
+            await handlers.leave(mockIo as Server, roomId, { type: 'leave', userId, socketId: 'socket1' });
 
             expect(mockIo.to).toHaveBeenCalledWith(roomId);
             expect(mockToEmit).toHaveBeenCalledWith('player:left', {
@@ -106,7 +106,7 @@ describe('Redis Event Handlers', () => {
             const roomId = 'room3';
             const userId = 'user5';
 
-            await handlers.leave(mockIo as Server, roomId, { type: 'leave', userId });
+            await handlers.leave(mockIo as Server, roomId, { type: 'leave', userId, socketId: 'socket5' });
 
             expect(mockIo.to).toHaveBeenCalledWith(roomId);
             expect(mockToEmit).toHaveBeenCalledWith('player:left', {
@@ -147,6 +147,7 @@ describe('Redis Event Handlers', () => {
             const leaveEvent = {
                 type: 'leave' as const,
                 userId: 'user1',
+                socketId: 'socket1',
             };
 
             await handlers.leave(mockIo as Server, 'room1', leaveEvent);
