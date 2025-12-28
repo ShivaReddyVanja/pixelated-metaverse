@@ -1,6 +1,5 @@
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { getSocketInstance } from "../services/getSocketInstance";
 import dotenv from "dotenv"
 import { JwtTokenPayload } from "@myapp/types"
 import { getRedisClient } from "../services/redis";
@@ -14,7 +13,7 @@ app.post("/create-room", async (req, res) => {
     const { name = "Noobmaster" } = req.body;
     const roomId = uuidv4();
     const userId = uuidv4();
-    const socketInstance = getSocketInstance();
+    const socketUrl = process.env.WEB_SOCKET_URL!;
     const payload: Partial<JwtTokenPayload> = {
         userId,
         roomId,
@@ -22,7 +21,7 @@ app.post("/create-room", async (req, res) => {
     }
     // Generate JWT token (expires in 2 hours)
     const token = await createToken(payload, "24h");
-    const result = await redisClient.set(roomId, socketInstance, {
+    const result = await redisClient.set(roomId, socketUrl, {
         expiration: {
             type: 'EX', value: 7200
         }
@@ -32,7 +31,7 @@ app.post("/create-room", async (req, res) => {
         userId,
         roomId,
         token,
-        socket: socketInstance
+        socket: socketUrl
     })
 })
 

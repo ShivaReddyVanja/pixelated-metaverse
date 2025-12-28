@@ -1,6 +1,6 @@
 import { handleLeave } from '../handleLeave';
 import { removeUser } from '../../redisHandlers/actions';
-import { publishEvent } from '../../redisHandlers/publisherRedis';
+import { publishEvent } from '../../redisHandlers/publishEvents';
 import { createMockIo, createMockSocket } from '../../__tests__/utils/testHelpers';
 
 // Mock dependencies

@@ -1,4 +1,4 @@
-import Room from "./RedisRoom";
+import Room from "./Room";
 import crypto from "crypto";
 
 export class RoomManager {

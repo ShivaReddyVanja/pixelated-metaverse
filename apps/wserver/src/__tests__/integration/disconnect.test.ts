@@ -1,5 +1,5 @@
 import { removeUser } from '../../redisHandlers/actions';
-import { publishEvent } from '../../redisHandlers/publisherRedis';
+import { publishEvent } from '../../redisHandlers/publishEvents';
 import { RoomManager } from '../../RoomManager';
 import { createMockIo, createMockSocket } from '../utils/testHelpers';
 

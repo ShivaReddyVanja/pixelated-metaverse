@@ -1,31 +1,32 @@
 import { GlideClient, GlideClientConfiguration, JsonBatch } from "@valkey/valkey-glide";
 import { RoomManager } from "./RoomManager";
-import { PublishEvents, PublishSignallingEvent } from "./types";
-import { handlers } from "./redisHandlers/eventHandlers";
+import { PlayerFar, PublishEvents, PublishSignallingEvent } from "./types";
+import { handlers } from "./redisHandlers/subscribedEvents";
 import { io } from "./index"
+
 class RedisClient {
     static instance: GlideClient;
     private static initializing: Promise<GlideClient> | null = null;
 
     public static async getInstance() {
-        if (this.instance) {
-            return this.instance;
-        }
+        if (this.instance) return this.instance;
+        
         if (!this.initializing) {
             const addresses = [
                 {
-                    host: "localhost",
-                    port: 6379,
+                    host: process.env.REDIS_HOST!,
+                    port: Number(process.env.REDIS_PORT)!,
                 },
             ];
+            const isProd = process.env.ENV === 'prod';
             this.initializing = GlideClient.createClient({
                 addresses: addresses,
-                //useTLS: true,
+                ...(isProd && { useTLS: true }),
                 requestTimeout: 500, // 500ms timeout
                 clientName: "pubsub_client",
                 pubsubSubscriptions: {
                     channelsAndPatterns: {
-                        [GlideClientConfiguration.PubSubChannelModes.Exact]: new Set([`server:${RoomManager.serverId}`]),
+                        [GlideClientConfiguration.PubSubChannelModes.Exact]: new Set([`server:${RoomManager.serverId}`,`server:player-far:${RoomManager.serverId}`]),
                         [GlideClientConfiguration.PubSubChannelModes.Pattern]: new Set(['room:*']),
                     },
                     callback: (msg) => {
@@ -34,10 +35,19 @@ class RedisClient {
                             const payload = JSON.parse(msg) as PublishSignallingEvent;
                             io.to(payload.to).emit("webrtc-signaling", { from:payload.from, data:payload.data });
                         }
+                        const playerFarHandler = (msg:string)=>{
+                            const payload = JSON.parse(msg) as PlayerFar;
+                            console.log(payload)
+                            io.to(payload.to).emit("player-far", { playerId:payload.playerId, socketId:payload.socketId });
+                        }
 
                         const channelName = msg.channel as string;
 
-                        if(channelName.startsWith("server")){
+                        if(channelName.startsWith("server:player-far")){
+                            playerFarHandler(msg.message as string);
+                            return;
+                        }
+                        else if(channelName.startsWith("server:")){
                             signalHandler(msg.message as string);
                             return;
                         }

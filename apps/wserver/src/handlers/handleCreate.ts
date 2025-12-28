@@ -1,6 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { RoomManager } from "../RoomManager";
-import Room from "../RedisRoom";
+import Room from "../Room";
 import { addUser, checkIfRoomExists, createRoom } from "../redisHandlers/actions";
 import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "../types/events";
 import { handleJoin } from "./handleJoin";

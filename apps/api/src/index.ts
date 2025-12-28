@@ -9,8 +9,9 @@ import { createClient } from "redis";
 // Load environment variables
 dotenv.config();
 const jwt_secret = process.env.JWT_SECRET;
-if (!jwt_secret) {
-  throw new Error("JWT_SECRET not found in environment variables");
+const socket = process.env.WEB_SOCKET_URL;
+if (!jwt_secret || !socket) {
+  throw new Error(`Environment variables not set properly \n jwt secret :"${jwt_secret?.slice(30)} \n, socket url : ${socket}`);
 }
 
 const app = express();

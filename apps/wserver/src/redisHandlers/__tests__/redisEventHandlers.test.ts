@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { handlers } from '../eventHandlers';
+import { handlers } from '../subscribedEvents';
 import { getPlayersInRoom } from '../actions';
 import { createMockIo } from '../../__tests__/utils/testHelpers';
 

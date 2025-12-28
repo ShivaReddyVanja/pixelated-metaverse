@@ -2,7 +2,7 @@ import { Server, Socket } from "socket.io";
 import { RoomManager } from "../RoomManager";
 import { ServerToClientEvents, ClientToServerEvents, InterServerEvents, SocketData } from "../types/events";
 import { moveUser } from "../redisHandlers/actions";
-import { publishEvent } from "../redisHandlers/publisherRedis";
+import { publishEvent } from "../redisHandlers/publishEvents";
 
 type IoServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;

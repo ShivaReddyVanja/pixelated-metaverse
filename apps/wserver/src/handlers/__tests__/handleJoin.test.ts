@@ -1,6 +1,6 @@
 import { handleJoin } from '../handleJoin';
 import { addUser, getPlayersInRoom } from '../../redisHandlers/actions';
-import { publishEvent } from '../../redisHandlers/publisherRedis';
+import { publishEvent } from '../../redisHandlers/publishEvents';
 import { RoomManager } from '../../RoomManager';
 import { createMockIo, createMockSocket, createMockCallback } from '../../__tests__/utils/testHelpers';
 

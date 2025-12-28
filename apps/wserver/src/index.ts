@@ -13,7 +13,7 @@ dotenv.config();
 
 import { verifyToken } from "@shared/jwt";
 import { getPlayerServerId, removeUser } from "./redisHandlers/actions";
-import { publishEvent, publishSignallingEvents } from "./redisHandlers/publisherRedis";
+import { publishEvent, publishSignallingEvents } from "./redisHandlers/publishEvents";
 
 const httpServer = createServer((req, res) => {
   if (req.method === "GET" && req.url === "/health") {
@@ -84,9 +84,11 @@ io.on("connection", (socket) => {
     if (serverId) {
       const from = socket.id;
       await publishSignallingEvents(serverId, { to, from, data });
-      console.log("publisheing the signal");
     }
-    console.log("Ignoring the webrtc signal server records not found for recipient", to, socket.id)
+    else {
+       console.log("Ignoring webrtc signalling", "recipient socket id is",to,"sender socket id is", socket.id)
+    }
+    
   });
 
   // Handle disconnection
@@ -97,11 +99,13 @@ io.on("connection", (socket) => {
       const room = RoomManager.getInstance().getRoom(roomId);
 
       if (room) {
+        room.removePlayer(userId)
         await removeUser(room.roomid, userId, socket.id);
         // Use pub/sub pattern to notify all servers
         await publishEvent(roomId, {
           type: "leave" as const,
-          userId
+          userId,
+          socketId:socket.id
         });
       }
     }

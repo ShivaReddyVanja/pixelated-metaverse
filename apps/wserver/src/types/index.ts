@@ -30,7 +30,8 @@ export type JoinRoom = {
 }
 export type LeaveRoom = {
   type: "leave",
-  userId: string
+  userId: string,
+  socketId:string
 }
 export type PlayerMoved = {
   type: "move",
@@ -43,6 +44,12 @@ export type PublishSignallingEvent = {
  from:string,
  data:any
 }
+
+ export type PlayerFar = {
+        to:string,
+        playerId:string,
+        socketId:string
+  }
 
 
 export type PublishEvents = JoinRoom | LeaveRoom | PlayerMoved
