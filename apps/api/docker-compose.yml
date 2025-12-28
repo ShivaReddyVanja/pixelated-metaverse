@@ -1,0 +1,39 @@
+services:
+  api:
+    container_name: pixelated_api
+    build:
+      context: ../../
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "${API_PORT}:5001"
+    networks:
+      - pixelated_network
+    environment:
+      - PORT=${PORT}
+      - JWT_SECRET=${JWT_SECRET}
+      - WEB_SOCKET_URL=${WEB_SOCKET_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_URL=${REDIS_URL}
+      - ENV=${ENV}
+    depends_on:
+      - redis
+
+  redis:
+    container_name: pixelated_api_redis
+    image: bitnami/redis:latest
+    ports:
+      - "${REDIS_PORT}:6379"
+    networks:
+      - pixelated_network
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - pixelated_api_redis_data:/bitnami/redis/data
+
+networks:
+  pixelated_network:
+    driver: bridge
+
+volumes:
+  pixelated_api_redis_data:
