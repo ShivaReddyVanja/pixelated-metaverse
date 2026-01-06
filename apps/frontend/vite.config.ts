@@ -13,9 +13,9 @@ export default defineConfig({
   define: {
     'process.env': process.env
   },
-  server:{
-    allowedHosts:[
-      "nontravelling-bilingually-erma.ngrok-free.dev"
+  server: {
+    allowedHosts: [
+      "pixelmeet.xyz"
     ],
   }
 

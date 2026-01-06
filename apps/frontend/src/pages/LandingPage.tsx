@@ -36,12 +36,12 @@ export default function LandingPage() {
                         </span>
                     </h1>
                     <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-400 mb-8">
-                        Move beyond boring video calls. Meet, chat, and collaborate in a vibrant 2D pixel world you can call your own.
+                        Move beyond boring video calls. Meet and collaborate in a vibrant 2D pixel world you can call your own.
                     </p>
                     <CtaButtons />
                     <div className="mt-16 w-full max-w-4xl p-4 bg-slate-800 rounded-lg border border-slate-700 shadow-2xl shadow-pink-500/10">
-                        <div className="aspect-video bg-slate-900 rounded-md flex items-center justify-center">
-                            <p className="text-slate-500">Your awesome 2D map will be shown here!</p>
+                        <div className="aspect-video bg-slate-900 rounded-md flex items-center justify-center" style={{backgroundImage: "url('/pixelmeet.png')", backgroundSize: "cover", backgroundPosition: "center"}}>
+                           
                         </div>
                     </div>
                 </section>
@@ -57,9 +57,9 @@ export default function LandingPage() {
                             <div className="flex items-center justify-center h-12 w-12 rounded-full bg-pink-600/20 mx-auto mb-4">
                                 <MapPinIcon className="h-6 w-6 text-pink-400" />
                             </div>
-                            <h3 className="text-xl font-semibold mb-2">Customizable Spaces</h3>
+                            <h3 className="text-xl font-semibold mb-2">Natural Meeting</h3>
                             <p className="text-slate-400">
-                                Design your own office, lounge, or conference hall. Express your team&apos;s culture in every pixel.
+                               Walk upto others to start a video/audio call, that feels like natural conversation
                             </p>
                         </div>
                         <div className="bg-slate-800 p-8 rounded-xl border border-slate-700">
@@ -77,7 +77,7 @@ export default function LandingPage() {
                             </div>
                             <h3 className="text-xl font-semibold mb-2">Interactive Elements</h3>
                             <p className="text-slate-400">
-                                Engage with whiteboards, shared documents, and embedded apps directly within your virtual space.
+                                Engage with world, have a chat, and have fun with your friends.
                             </p>
                         </div>
                     </div>
@@ -86,7 +86,7 @@ export default function LandingPage() {
 
             {/* Footer */}
             <footer className="border-t border-slate-800 text-center py-6">
-                <p className="text-slate-500">© 2025 PixelMeet. All rights reserved.</p>
+                <p className="text-slate-500">© 2026 PixelMeet. All rights reserved.</p>
             </footer>
         </div>
     );
